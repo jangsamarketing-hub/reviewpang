@@ -4693,8 +4693,8 @@ function markCouponSent(cid){
 
 /* ════════════ 고객 탭: 기간 필터 + 체크박스 + 단체 발송 ════════════ */
 let _custFilter='all';
-let _custVisitMode='visited'; // 'visited' | 'notvisit'
-let _custDays=0; // 0=전체
+let _custVisitMode='notvisit'; // 'visited' | 'notvisit'
+let _custDays=21; // 기본: 3주 이상 미방문
 
 function getLastVisit(u){
   // 스탬프 이력 → 스핀 로그 → 쿠폰 발급일 → 설문일 → 가입일 순으로 가장 최근 날짜 반환
