@@ -934,32 +934,43 @@ body.dark .success-msg{color:#3ddc97}
   </section>
 
   <!-- ⑨ 비즈니스 문의 / 링크트리 -->
-  <section style="background:#111827;padding:36px 22px">
-   <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,0.5);margin-bottom:16px;text-align:center">비즈니스 문의</div>
-   <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">
-    <a href="https://litt.ly/jangsa.doctor" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:14px 18px;text-decoration:none">
-     <div style="width:36px;height:36px;border-radius:10px;background:#FEE500;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">💬</div>
-     <div>
-      <div style="font-size:14px;font-weight:700;color:#fff">카카오톡 문의하기</div>
-      <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:1px">litt.ly/jangsa.doctor</div>
-     </div>
-     <div style="margin-left:auto;color:rgba(255,255,255,0.3);font-size:16px">›</div>
-    </a>
-    <a href="https://open.kakao.com/me/jangsa_doctor" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:14px 18px;text-decoration:none">
-     <div style="width:36px;height:36px;border-radius:10px;background:#03C75A;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🔗</div>
-     <div>
-      <div style="font-size:14px;font-weight:700;color:#fff">오픈카카오 문의</div>
-      <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:1px">장사천재 김도겸 오픈채팅</div>
-     </div>
-     <div style="margin-left:auto;color:rgba(255,255,255,0.3);font-size:16px">›</div>
-    </a>
-   </div>
-   <div style="text-align:center;display:flex;flex-direction:column;gap:8px">
-    <button onclick="show('s-admin-login')" style="background:none;border:none;font-size:12px;color:rgba(255,255,255,0.3);cursor:pointer;font-family:inherit;text-decoration:underline;padding:4px">기존 사장님 로그인</button>
-    <button onclick="show('s-platform-login')" style="background:none;border:none;font-size:11px;color:rgba(255,255,255,0.15);cursor:pointer;font-family:inherit;padding:4px">총괄관리자</button>
-   </div>
-   <div style="margin-top:20px;font-size:10px;color:rgba(255,255,255,0.15);text-align:center;line-height:1.8">© 2025 리뷰이벤트 플랫폼 by 장사천재 김도겸<br>사업자등록: 문의 시 제공</div>
+  <section id="landing-contact-section" style="background:#111827;padding:36px 22px">
   </section>
+  <script>
+  function renderLandingContact(){
+    const el=document.getElementById('landing-contact-section');
+    if(!el)return;
+    const k1url=_pconf('kakaoUrl','https://litt.ly/jangsa.doctor');
+    const k1label=_pconf('kakaoLabel','카카오톡 문의하기');
+    const k1sub=_pconf('kakaoSub','litt.ly/jangsa.doctor');
+    const k2url=_pconf('openKakaoUrl','https://open.kakao.com/me/jangsa_doctor');
+    const k2label=_pconf('openKakaoLabel','오픈카카오 문의');
+    const k2sub=_pconf('openKakaoSub','장사천재 김도겸 오픈채팅');
+    const footer=_pconf('footerCopy','© 2025 리뷰이벤트 플랫폼 by 장사천재 김도겸');
+    const footerSub=_pconf('footerSub','사업자등록: 문의 시 제공');
+    el.innerHTML=`
+     <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,0.5);margin-bottom:16px;text-align:center">비즈니스 문의</div>
+     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">
+      <a href="${k1url}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:14px 18px;text-decoration:none">
+       <div style="width:36px;height:36px;border-radius:10px;background:#FEE500;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">💬</div>
+       <div><div style="font-size:14px;font-weight:700;color:#fff">${k1label}</div><div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:1px">${k1sub}</div></div>
+       <div style="margin-left:auto;color:rgba(255,255,255,0.3);font-size:16px">›</div>
+      </a>
+      <a href="${k2url}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:14px 18px;text-decoration:none">
+       <div style="width:36px;height:36px;border-radius:10px;background:#03C75A;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🔗</div>
+       <div><div style="font-size:14px;font-weight:700;color:#fff">${k2label}</div><div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:1px">${k2sub}</div></div>
+       <div style="margin-left:auto;color:rgba(255,255,255,0.3);font-size:16px">›</div>
+      </a>
+     </div>
+     <div style="text-align:center;display:flex;flex-direction:column;gap:8px">
+      <button onclick="show('s-admin-login')" style="background:none;border:none;font-size:12px;color:rgba(255,255,255,0.3);cursor:pointer;font-family:inherit;text-decoration:underline;padding:4px">기존 사장님 로그인</button>
+      <button onclick="show('s-platform-login')" style="background:none;border:none;font-size:11px;color:rgba(255,255,255,0.15);cursor:pointer;font-family:inherit;padding:4px">총괄관리자</button>
+     </div>
+     <div style="margin-top:20px;font-size:10px;color:rgba(255,255,255,0.15);text-align:center;line-height:1.8">${footer}<br>${footerSub}</div>
+    `;
+  }
+  renderLandingContact();
+  </script>
 
   <!-- 매장 찾기 박스 -->
   <section id="store-search-section" style="background:#1a2535;padding:28px 22px;display:none">
@@ -1842,6 +1853,39 @@ const PLATFORM={email:'jayden',password:'194360'};
 const _PCONF_KEY='reviewpang_platform_config';
 function _loadPConf(){try{return JSON.parse(localStorage.getItem(_PCONF_KEY))||{};}catch(e){return{}}}
 function _savePConf(){localStorage.setItem(_PCONF_KEY,JSON.stringify(_platformConfig));}
+async function _savePConfRemote(){
+  if(!_sb)return;
+  try{await _sb.from('stores').upsert({store_id:'__platform__',data:_platformConfig,updated_at:new Date().toISOString()},{onConflict:'store_id'});}
+  catch(e){console.warn('[sb pconf save]',e);}
+}
+async function _loadPConfRemote(){
+  if(!_sb)return;
+  try{
+    const {data}=await _sb.from('stores').select('data').eq('store_id','__platform__').maybeSingle();
+    if(data&&data.data){
+      Object.assign(_platformConfig,data.data);
+      _savePConf();
+    }
+  }catch(e){console.warn('[sb pconf load]',e);}
+}
+function _pconf(key,fallback){return (_platformConfig[key]!==undefined&&_platformConfig[key]!=='')?_platformConfig[key]:fallback;}
+function savePlatformHomeConfig(){
+  var fields={
+    kakaoLabel:document.getElementById('pc-k1label'),
+    kakaoUrl:document.getElementById('pc-k1url'),
+    kakaoSub:document.getElementById('pc-k1sub'),
+    openKakaoLabel:document.getElementById('pc-k2label'),
+    openKakaoUrl:document.getElementById('pc-k2url'),
+    openKakaoSub:document.getElementById('pc-k2sub'),
+    footerCopy:document.getElementById('pc-footer'),
+    footerSub:document.getElementById('pc-footersub')
+  };
+  Object.keys(fields).forEach(function(k){if(fields[k])_platformConfig[k]=fields[k].value.trim();});
+  _savePConf();
+  _savePConfRemote();
+  renderLandingContact();
+  toast('홈 화면 설정이 저장되었습니다 ✅');
+}
 const _platformConfig=_loadPConf();
 if(_platformConfig.forceAllPremium===undefined)_platformConfig.forceAllPremium=false; // 기본값: 개별 플랜 적용 (무료=네이버+메인게임+카카오맵)
 
@@ -2431,8 +2475,11 @@ function adminLogout(){
 function platformLogin(){
   const e=document.getElementById('p-email').value.trim(),p=document.getElementById('p-pw').value.trim();
   const el=document.getElementById('platform-error');
-  if(e===PLATFORM.email&&p===PLATFORM.password){el.innerHTML='';show('s-platform')}
-  else el.innerHTML='<div class="error-msg">이메일 또는 비밀번호가 올바르지 않습니다</div>';
+  if(e===PLATFORM.email&&p===PLATFORM.password){
+    el.innerHTML='';
+    _loadPConfRemote().then(()=>{renderLandingContact();renderPlatform();});
+    show('s-platform');
+  } else el.innerHTML='<div class="error-msg">이메일 또는 비밀번호가 올바르지 않습니다</div>';
 }
 // 매장의 마지막 활동일 계산 (여러 소스에서 가장 최근 날짜)
 function getStoreLastActivity(s){
@@ -2539,6 +2586,46 @@ function renderPlatform(){
       <div style="display:flex;gap:8px;margin-top:10px">
         <button onclick="bulkSetPremium(true)" style="flex:1;padding:9px;font-size:12px;font-weight:700;border-radius:10px;border:1.5px solid var(--blue);background:${_platformConfig.forceAllPremium?'var(--blue)':'var(--white)'};color:${_platformConfig.forceAllPremium?'#fff':'var(--blue)'};cursor:pointer;font-family:inherit">🔓 전체 개방</button>
         <button onclick="bulkSetPremium(false)" style="flex:1;padding:9px;font-size:12px;font-weight:700;border-radius:10px;border:1.5px solid #f97316;background:${!_platformConfig.forceAllPremium?'#f97316':'var(--white)'};color:${!_platformConfig.forceAllPremium?'#fff':'#f97316'};cursor:pointer;font-family:inherit">🔒 플랜 적용</button>
+      </div>
+    </div>
+
+    <!-- 홈 설정 -->
+    <div class="card card-pad" style="margin-bottom:12px">
+      <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:12px">🏠 홈 화면 설정</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--t3);margin-bottom:4px">💬 카카오톡 문의 — 버튼 텍스트</div>
+          <input id="pc-k1label" value="${_pconf('kakaoLabel','카카오톡 문의하기')}" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;background:var(--white);color:var(--t1);font-family:Noto Sans KR,sans-serif">
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--t3);margin-bottom:4px">💬 카카오톡 문의 — URL</div>
+          <input id="pc-k1url" value="${_pconf('kakaoUrl','https://litt.ly/jangsa.doctor')}" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;background:var(--white);color:var(--t1);font-family:Noto Sans KR,sans-serif">
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--t3);margin-bottom:4px">💬 카카오톡 문의 — 서브텍스트</div>
+          <input id="pc-k1sub" value="${_pconf('kakaoSub','litt.ly/jangsa.doctor')}" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;background:var(--white);color:var(--t1);font-family:Noto Sans KR,sans-serif">
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--t3);margin-bottom:4px">🔗 오픈카카오 — 버튼 텍스트</div>
+          <input id="pc-k2label" value="${_pconf('openKakaoLabel','오픈카카오 문의')}" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;background:var(--white);color:var(--t1);font-family:Noto Sans KR,sans-serif">
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--t3);margin-bottom:4px">🔗 오픈카카오 — URL</div>
+          <input id="pc-k2url" value="${_pconf('openKakaoUrl','https://open.kakao.com/me/jangsa_doctor')}" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;background:var(--white);color:var(--t1);font-family:Noto Sans KR,sans-serif">
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--t3);margin-bottom:4px">🔗 오픈카카오 — 서브텍스트</div>
+          <input id="pc-k2sub" value="${_pconf('openKakaoSub','장사천재 김도겸 오픈채팅')}" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;background:var(--white);color:var(--t1);font-family:Noto Sans KR,sans-serif">
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--t3);margin-bottom:4px">© 푸터 저작권 문구</div>
+          <input id="pc-footer" value="${_pconf('footerCopy','© 2025 리뷰이벤트 플랫폼 by 장사천재 김도겸')}" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;background:var(--white);color:var(--t1);font-family:Noto Sans KR,sans-serif">
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--t3);margin-bottom:4px">📋 푸터 사업자 문구</div>
+          <input id="pc-footersub" value="${_pconf('footerSub','사업자등록: 문의 시 제공')}" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;background:var(--white);color:var(--t1);font-family:Noto Sans KR,sans-serif">
+        </div>
+        <button onclick="savePlatformHomeConfig()" class="btn btn-blue" style="margin-top:4px">💾 저장 (홈에 즉시 반영)</button>
       </div>
     </div>
 
