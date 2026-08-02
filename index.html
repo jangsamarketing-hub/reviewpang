@@ -208,6 +208,16 @@ body.dark .dice-jackpot-banner{background:#2e2814;color:#f5b925}
 .drv-ic{font-size:52px;margin-bottom:10px}
 .drv-name{font-size:20px;font-weight:900;color:var(--t1)}
 .drv-sub{font-size:13px;color:var(--t3);margin-top:6px}
+.dmission{display:flex;align-items:center;gap:10px;padding:12px;border-radius:12px;border:1.5px solid var(--border);background:var(--white);cursor:pointer}
+.dmission .dm-ic{font-size:18px;flex:none}
+.dmission .dm-tx{flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--t1)}
+.dmission .dm-tx small{display:block;font-weight:500;color:var(--t4);font-size:11px;margin-top:1px}
+.dmission .dm-rw{font-size:12px;font-weight:800;color:var(--blue);flex:none}
+.dmission.focus{border-color:var(--blue);border-width:2px;background:var(--blue-light);box-shadow:0 3px 12px -4px rgba(49,130,246,.35)}
+.dmission.done{opacity:.55;cursor:default}
+.dmission.done .dm-rw{color:var(--green)}
+.dmission.lock{background:var(--bg);border-style:dashed}
+.dmission.lock .dm-rw{color:var(--t4)}
 </style>
 </head>
 <body>
@@ -1624,7 +1634,32 @@ body.dark .dice-jackpot-banner{background:#2e2814;color:#f5b925}
 <div id="dice-reveal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center;padding:16px">
   <div class="dice-reveal-box" id="dice-reveal-box"></div>
   <div style="position:fixed;bottom:24px;left:16px;right:16px;max-width:320px;margin:0 auto">
-    <button class="btn btn-blue" onclick="closeDiceReveal()">확인</button>
+    <button class="btn btn-blue" id="dice-reveal-confirm-btn" onclick="closeDiceReveal()">확인</button>
+  </div>
+</div>
+
+<!-- ══════════ 🎲 주사위 충전 미션 ══════════ -->
+<div id="dice-mission-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:flex-end;justify-content:center">
+  <div style="background:var(--white);border-radius:24px 24px 0 0;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;padding:22px 18px 32px">
+    <div style="width:40px;height:4px;background:var(--border);border-radius:4px;margin:0 auto 16px"></div>
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="font-size:30px">🎲</div>
+      <div style="font-size:17px;font-weight:900;color:var(--t1);margin-top:2px">주사위 충전하기</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:2px">미션 1개당 주사위 1개!</div>
+    </div>
+    <div id="dice-mission-list" style="display:flex;flex-direction:column;gap:8px"></div>
+    <button class="btn btn-ghost" style="margin-top:16px" onclick="closeDiceMissions()">닫기</button>
+  </div>
+</div>
+
+<!-- ══════════ 🎲 리뷰 미션 체류시간 검증 ══════════ -->
+<div id="dice-dwell-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center;padding:16px">
+  <div style="background:var(--white);border-radius:22px;width:100%;max-width:320px;padding:28px 24px;text-align:center">
+    <div id="dice-dwell-title" style="font-size:18px;font-weight:900;color:var(--t1)"></div>
+    <div id="dice-dwell-status" style="font-size:13px;color:var(--t3);margin:12px 0 18px;line-height:1.6"></div>
+    <button id="dice-dwell-go" class="btn" style="background:#03C75A;color:#fff;font-weight:800">리뷰 쓰러 가기 →</button>
+    <button id="dice-dwell-claim" class="btn btn-blue" style="display:none;margin-top:8px" onclick="claimDiceDwell()">🎲 주사위 받기</button>
+    <button class="btn btn-ghost" style="margin-top:8px" onclick="closeDiceDwell()">닫기</button>
   </div>
 </div>
 
@@ -2318,7 +2353,7 @@ function renderDiceBoard(){
   const btn=document.getElementById('dice-roll-btn');
   btn.disabled=false;
   if(state.dice>0){btn.textContent='🎲 주사위 굴리기';btn.onclick=startDiceRoll;}
-  else{btn.textContent='🎲 주사위 받으러 가기';btn.onclick=()=>toast('리뷰 미션 참여하면 주사위를 더 받을 수 있어요 🙏');}
+  else{btn.textContent='🎲 주사위 받으러 가기';btn.onclick=openDiceMissions;}
 }
 let _diceAnimating=false;
 function startDiceRoll(){
@@ -2373,10 +2408,114 @@ function showDiceReveal(result){
   document.getElementById('dice-reveal-box').innerHTML=
     `<div class="drv-ic">${icon}</div><div class="drv-name">${name}</div><div class="drv-sub">${sub}</div>`;
   document.getElementById('dice-reveal-overlay').style.display='flex';
+  const confirmBtn=document.getElementById('dice-reveal-confirm-btn');
+  if(getMyDiceState().dice<=0){
+    confirmBtn.textContent='🎲 주사위 더 받기';
+    confirmBtn.onclick=function(){closeDiceReveal();openDiceMissions();};
+  }else{
+    confirmBtn.textContent='확인';
+    confirmBtn.onclick=closeDiceReveal;
+  }
 }
 function closeDiceReveal(){
   document.getElementById('dice-reveal-overlay').style.display='none';
 }
+
+/* ── 🎲 주사위 충전 미션 (S5) ── */
+let _diceMissionActive=null; // 설문처럼 다른 화면으로 이동하는 미션의 보상을 연결하기 위한 표식
+let _diceMissionJustGranted=false;
+function _diceMissionUrl(id){
+  const events=STORE.events||[];
+  if(id==='naver')return STORE.naverReviewUrl||(STORE.naverLinked?STORE.profile?.naverUrl:'')||'';
+  if(id==='kakao')return (events.find(e=>e.platform==='kakao'&&e.link)||{}).link||STORE.profile.kakaoReviewUrl||'';
+  if(id==='google')return (events.find(e=>e.platform==='google'&&e.link)||{}).link||STORE.profile.googleReviewUrl||'';
+  if(id==='insta')return (events.find(e=>e.platform==='instagram'&&e.link)||{}).link||STORE.profile.instagramUrl||'';
+  return '';
+}
+function _diceMissionDoneToday(id){
+  const state=getMyDiceState();
+  return (state.missionsDone||[]).includes(id+'_'+today());
+}
+function _diceMarkMissionDone(id,bonus){
+  const state=getMyDiceState();
+  if(!state.missionsDone)state.missionsDone=[];
+  state.missionsDone.push(id+'_'+today());
+  const mission=(STORE.diceGame.missions||[]).find(m=>m.id===id);
+  state.dice+=(mission&&mission.dice||1)+(bonus||0);
+  saveState();
+}
+function openDiceMissions(){
+  const missions=STORE.diceGame.missions||[];
+  let nextFound=false;
+  const html=missions.map(m=>{
+    const done=_diceMissionDoneToday(m.id);
+    const locked=m.premium&&!isPremium();
+    const isNext=!done&&!locked&&!nextFound;
+    if(isNext)nextFound=true;
+    const icon=done?'✅':locked?'🔒':(m.verify==='internal'?'📝':m.id==='naver'?'🟢':m.id==='kakao'?'💛':m.id==='google'?'🔵':'📸');
+    const sub=done?'오늘 완료했어요':locked?'사장님 플랜 업그레이드가 필요해요':(m.id==='survey'?'30초면 끝나요 · 가장 쉬워요':'문구를 만들어 드려요');
+    const click=done?'':locked?'showVipModal()':('startDiceMission(\''+m.id+'\')');
+    return `<div class="dmission${isNext?' focus':''}${done?' done':''}${locked?' lock':''}" onclick="${click}">`+
+      `<span class="dm-ic">${icon}</span><span class="dm-tx">${m.label}<small>${sub}</small></span>`+
+      `<span class="dm-rw">${done?'완료':'🎲+'+(m.dice||1)}</span></div>`;
+  }).join('');
+  document.getElementById('dice-mission-list').innerHTML=html;
+  document.getElementById('dice-mission-overlay').style.display='flex';
+}
+function closeDiceMissions(){document.getElementById('dice-mission-overlay').style.display='none';}
+function startDiceMission(id){
+  const m=(STORE.diceGame.missions||[]).find(x=>x.id===id);
+  if(!m)return;
+  if(m.premium&&!isPremium()){showVipModal();return;}
+  closeDiceMissions();
+  if(m.verify==='internal'){_diceMissionActive=id;show('s-survey');return;}
+  openDiceDwell(id);
+}
+let _diceDwellMissionId=null,_diceDwellStart=0;
+function openDiceDwell(id){
+  const m=(STORE.diceGame.missions||[]).find(x=>x.id===id);
+  const url=_diceMissionUrl(id);
+  if(!url){toast('사장님이 아직 리뷰 링크를 등록하지 않았어요');return;}
+  _diceDwellMissionId=id;_diceDwellStart=0;
+  document.getElementById('dice-dwell-title').textContent=m.label;
+  document.getElementById('dice-dwell-status').textContent='버튼을 눌러 리뷰를 남기고 돌아와주세요';
+  document.getElementById('dice-dwell-go').onclick=function(){
+    window.open(url,'_blank');
+    _diceDwellStart=Date.now();
+    document.getElementById('dice-dwell-status').textContent='리뷰를 작성하고 다시 이 화면으로 돌아와주세요 🙏';
+  };
+  document.getElementById('dice-dwell-claim').style.display='none';
+  document.getElementById('dice-dwell-overlay').style.display='flex';
+}
+function closeDiceDwell(){
+  document.getElementById('dice-dwell-overlay').style.display='none';
+  _diceDwellMissionId=null;_diceDwellStart=0;
+}
+function claimDiceDwell(){
+  if(!_diceDwellMissionId)return;
+  _diceMarkMissionDone(_diceDwellMissionId,0);
+  closeDiceDwell();
+  toast('🎲 주사위 1개 획득!');
+  const dsc=document.getElementById('s-dice');
+  if(dsc&&dsc.classList.contains('on'))renderDiceBoard();
+}
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState!=='visible'||!_diceDwellMissionId||!_diceDwellStart)return;
+  const cfg=STORE&&STORE.diceGame;
+  if(!cfg)return;
+  const need=cfg.verifySeconds||60;
+  const elapsed=Math.floor((Date.now()-_diceDwellStart)/1000);
+  const statusEl=document.getElementById('dice-dwell-status');
+  const claimBtn=document.getElementById('dice-dwell-claim');
+  if(!statusEl||!claimBtn)return;
+  if(elapsed>=need){
+    statusEl.textContent='확인됐어요! 주사위를 받아보세요 🎲';
+    claimBtn.style.display='block';
+  }else{
+    statusEl.textContent='아직 리뷰를 다 안 쓰신 것 같아요 (약 '+(need-elapsed)+'초 더 필요해요)';
+    claimBtn.style.display='none';
+  }
+});
 
 /* ════════════════════ 네이버 UID 추출 ════════════════════ */
 function extractNaverUID(url){
@@ -4380,12 +4519,14 @@ function submitSurvey(){
   const alreadySurveyed=card.history&&card.history.some(h=>h.reason===surveyKey);
   STORE.surveys.push({name:currentUser?.name||'고객',phone:currentUser?.phone||'',uid:currentUser?.id||'guest',answers:{...curSurveyAnswers},date:today(),datetime:nowStr()});
   saveState();
+  const _fromDiceMission=_diceMissionActive==='survey';
+  if(_fromDiceMission){_diceMissionActive=null;_diceMarkMissionDone('survey');_diceMissionJustGranted=true;}
   if(cfg.grantStamp==='survey'&&!alreadySurveyed){
     grantStamp(surveyKey);
     showStampPopup();
   }else{
-    toast('소중한 의견 감사합니다 💙');
-    show('s-home');
+    toast(_fromDiceMission?'🎲 주사위 1개 획득!':'소중한 의견 감사합니다 💙');
+    show(_fromDiceMission?'s-dice':'s-home');
   }
 }
 function showStampPopup(){
@@ -4419,6 +4560,7 @@ function showStampPopup(){
 }
 function closeStampPopup(){
   document.getElementById('stamp-popup').style.display='none';
+  if(_diceMissionJustGranted){_diceMissionJustGranted=false;toast('🎲 주사위 1개 획득!');show('s-dice');return;}
   show('s-stamp');
 }
 
