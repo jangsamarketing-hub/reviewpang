@@ -178,6 +178,36 @@ body.dark .success-msg{color:#3ddc97}
 .ladder-arrow{animation:arrowBounce .75s ease-in-out infinite;display:block;color:#3182f6;font-size:14px;text-align:center;line-height:1;margin-bottom:1px}
 .review-links-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding-bottom:0}
 .review-links-sheet{background:var(--white);border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px 20px 40px}
+
+/* ══════════ 🎲 주사위 게임 ══════════ */
+.dice-board{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:16px}
+.dtile{aspect-ratio:1;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;position:relative;font-size:10px;font-weight:800;text-align:center;padding:2px;border:1px solid transparent}
+.dtile .dt-ic{font-size:18px;line-height:1}
+.dtile .dt-lb{font-size:9px;line-height:1.1;color:var(--t2)}
+.dt-stamp{background:#f3f0ff}
+body.dark .dt-stamp{background:#241e3a}
+.dt-coupon{background:#fff8e6}
+body.dark .dt-coupon{background:#2e2814}
+.dt-again{background:var(--green-light)}
+.dt-jackpot{background:linear-gradient(150deg,#fde68a,#f5b925);box-shadow:0 0 0 2px #d97706 inset;animation:diceJackpotGlow 2.2s ease-in-out infinite}
+@keyframes diceJackpotGlow{0%,100%{filter:brightness(1)}50%{filter:brightness(1.16)}}
+.dtile.here{outline:2.5px solid var(--blue);outline-offset:1px}
+.dtile.passing{transform:scale(1.14);transition:transform .12s}
+.dt-pawn{position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);font-size:18px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35));z-index:2}
+.dice-status-bar{display:flex;align-items:center;justify-content:space-between;padding:0 20px;margin-bottom:4px}
+.dice-count-badge{font-family:monospace;font-size:13px;font-weight:800;background:var(--t1);color:var(--white);padding:5px 12px;border-radius:20px}
+.dice-jackpot-banner{font-size:12px;font-weight:700;color:#b45309;text-align:center;padding:8px;background:#fff8e6;border-radius:10px;margin:0 16px 10px}
+body.dark .dice-jackpot-banner{background:#2e2814;color:#f5b925}
+#dice-faces{display:none;justify-content:center;gap:12px;padding:14px 0}
+.ddie{width:48px;height:48px;background:var(--white);border:1.5px solid var(--border);border-radius:11px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:7px;gap:2px}
+.ddie i{background:var(--blue);border-radius:50%;width:7px;height:7px;align-self:center;justify-self:center}
+.ddie.spin{animation:diceTumble .45s linear infinite}
+@keyframes diceTumble{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.ddie.spin{animation:none}.dt-jackpot{animation:none}}
+.dice-reveal-box{background:var(--white);border-radius:22px;width:100%;max-width:320px;padding:28px 24px;text-align:center}
+.drv-ic{font-size:52px;margin-bottom:10px}
+.drv-name{font-size:20px;font-weight:900;color:var(--t1)}
+.drv-sub{font-size:13px;color:var(--t3);margin-top:6px}
 </style>
 </head>
 <body>
@@ -1345,6 +1375,30 @@ body.dark .success-msg{color:#3ddc97}
   <div class="bottom-banner"><button class="btn-channel" onclick="goKakaoChannel()">💬 카카오 채널 구독하고 혜택받기</button></div>
 </div>
 
+<!-- ══════════ 🎲 주사위 굴리기 ══════════ -->
+<div class="scr" id="s-dice">
+  <div class="topbar"><button class="tb-back" onclick="show('s-home')">‹</button><div class="tb-title">주사위 이벤트</div></div>
+  <div class="scroll" style="background:var(--white)">
+    <div style="padding:20px 20px 6px;text-align:center">
+      <div style="font-size:13px;color:var(--blue);font-weight:700;margin-bottom:6px;letter-spacing:.5px">오늘의 이벤트</div>
+      <div style="font-size:22px;font-weight:900;color:var(--t1)">주사위 굴려서<br>상품 받아가세요!</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:6px">🎉 꽝 없이 모든 칸이 당첨이에요</div>
+    </div>
+    <div class="dice-status-bar">
+      <span style="font-size:12px;color:var(--t3);font-weight:600">내 진행 상황</span>
+      <span class="dice-count-badge">🎲 <span id="dice-count">0</span></span>
+    </div>
+    <div id="dice-jackpot-banner" class="dice-jackpot-banner"></div>
+    <div id="dice-board-grid" class="dice-board"></div>
+    <div id="dice-faces"></div>
+    <div style="padding:8px 20px;text-align:center">
+      <button id="dice-roll-btn" class="btn btn-blue">🎲 주사위 굴리기</button>
+    </div>
+    <div style="height:16px"></div>
+  </div>
+  <div class="bottom-banner"><button class="btn-channel" onclick="goKakaoChannel()">💬 카카오 채널 구독하고 혜택받기</button></div>
+</div>
+
 <!-- ══════════ 결과 ══════════ -->
 <div class="scr" id="s-result">
   <div class="topbar"><button class="tb-back" onclick="show('s-home')">‹</button><div class="tb-title">당첨 결과</div></div>
@@ -1563,6 +1617,14 @@ body.dark .success-msg{color:#3ddc97}
     <div style="padding:14px 20px 24px">
       <button class="btn btn-blue" onclick="closeStampPopup()">스탬프 카드 확인하기 →</button>
     </div>
+  </div>
+</div>
+
+<!-- ══════════ 🎲 주사위 당첨 결과 ══════════ -->
+<div id="dice-reveal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center;padding:16px">
+  <div class="dice-reveal-box" id="dice-reveal-box"></div>
+  <div style="position:fixed;bottom:24px;left:16px;right:16px;max-width:320px;margin:0 auto">
+    <button class="btn btn-blue" onclick="closeDiceReveal()">확인</button>
   </div>
 </div>
 
@@ -2197,11 +2259,123 @@ function rollDice(){
   const n=STORE.diceGame.tiles.length;
   const fromPos=state.pos;
   let pos=fromPos;
-  route.legs.forEach(leg=>{pos=(pos+leg.sum)%n;});
+  const legPositions=[]; // 화면 연출용: 각 굴림(더블 포함) 직후 위치
+  route.legs.forEach(leg=>{pos=(pos+leg.sum)%n;legPositions.push(pos);});
   state.pos=pos;
   const grant=grantDicePrize(prize);
   saveState();
-  return{prize,route,fromPos,toPos:pos,grant};
+  return{prize,route,fromPos,toPos:pos,legPositions,grant};
+}
+
+/* ── 🎲 보드 화면 (S1) + 굴리기 연출 ── */
+const _DICE_PIPS={1:[5],2:[1,9],3:[1,5,9],4:[1,3,7,9],5:[1,3,5,7,9],6:[1,3,4,6,7,9]};
+function _diceFaceHtml(n){
+  const pos=_DICE_PIPS[n]||[5];
+  const cells=pos.map(p=>{const r=Math.ceil(p/3),c=((p-1)%3)+1;return `<i style="grid-area:${r}/${c}"></i>`;}).join('');
+  return `<div class="ddie">${cells}</div>`;
+}
+// 20칸을 4열 지그재그(뱀 모양)로 나열할 때, 화면상 순서대로의 칸 인덱스를 반환
+function _diceBoardOrder(n,cols){
+  const rows=Math.ceil(n/cols);const order=[];
+  for(let r=0;r<rows;r++){
+    const row=[];
+    for(let c=0;c<cols;c++){const idx=r*cols+c;if(idx<n)row.push(idx);}
+    if(r%2===1)row.reverse();
+    order.push(...row);
+  }
+  return order;
+}
+function _diceDistTo(tiles,pos,prizeId){
+  const n=tiles.length;
+  for(let d=1;d<=n;d++){if(tiles[(pos+d)%n]===prizeId)return d;}
+  return null;
+}
+function _diceShortLabel(prize){
+  if(!prize||!prize.label)return'';
+  if(prize.type==='stamp')return'+'+(prize.amount||1);
+  if(prize.type==='jackpot')return'잭팟';
+  if(prize.type==='again')return'한번더';
+  return prize.label.length>5?prize.label.slice(0,4)+'…':prize.label;
+}
+function renderDiceBoard(){
+  if(!STORE||!STORE.diceGame)return;
+  const cfg=STORE.diceGame;
+  if(!cfg.tiles||cfg.tiles.length!==cfg.boardSize)cfg.tiles=_diceBuildTiles(cfg.prizes,cfg.boardSize);
+  const state=getMyDiceState();
+  const order=_diceBoardOrder(cfg.tiles.length,4);
+  const wrap=document.getElementById('dice-board-grid');
+  wrap.innerHTML=order.map(tileIdx=>{
+    const prizeId=cfg.tiles[tileIdx];
+    const prize=cfg.prizes.find(p=>p.id===prizeId)||{};
+    const here=tileIdx===state.pos;
+    return `<div class="dtile dt-${prize.type||'coupon'}${here?' here':''}" data-tile="${tileIdx}">`+
+      `<span class="dt-ic">${prize.icon||'🎁'}</span><span class="dt-lb">${_diceShortLabel(prize)}</span>`+
+      `${here?'<span class="dt-pawn">🐧</span>':''}</div>`;
+  }).join('');
+  document.getElementById('dice-count').textContent=state.dice;
+  const dist=_diceDistTo(cfg.tiles,state.pos,'jack');
+  document.getElementById('dice-jackpot-banner').textContent=dist!=null?('🏆 잭팟까지 '+dist+'칸!'):'';
+  const btn=document.getElementById('dice-roll-btn');
+  btn.disabled=false;
+  if(state.dice>0){btn.textContent='🎲 주사위 굴리기';btn.onclick=startDiceRoll;}
+  else{btn.textContent='🎲 주사위 받으러 가기';btn.onclick=()=>toast('리뷰 미션 참여하면 주사위를 더 받을 수 있어요 🙏');}
+}
+let _diceAnimating=false;
+function startDiceRoll(){
+  if(_diceAnimating)return;
+  const state=getMyDiceState();
+  if(state.dice<=0)return;
+  const result=rollDice(); // 상태는 이미 확정됨 — 아래는 연출만 담당
+  if(result.error){toast('오류가 발생했어요. 다시 시도해주세요.');return;}
+  _diceAnimating=true;
+  const btn=document.getElementById('dice-roll-btn');
+  btn.disabled=true;btn.textContent='굴리는 중...';
+  const cfg=STORE.diceGame;
+  const n=cfg.tiles.length;
+  const facesEl=document.getElementById('dice-faces');
+  facesEl.style.display='flex';
+  facesEl.innerHTML='<div class="ddie spin"></div><div class="ddie spin"></div>';
+  let legIdx=0;
+  function playLeg(){
+    const leg=result.route.legs[legIdx];
+    const startPos=legIdx===0?result.fromPos:result.legPositions[legIdx-1];
+    setTimeout(()=>{
+      facesEl.innerHTML=_diceFaceHtml(leg.a)+_diceFaceHtml(leg.b);
+      let step=0;
+      const timer=setInterval(()=>{
+        step++;
+        const tileIdx=(startPos+step)%n;
+        const el=document.querySelector('#dice-board-grid [data-tile="'+tileIdx+'"]');
+        if(el){el.classList.add('passing');setTimeout(()=>el&&el.classList.remove('passing'),240);}
+        if(step>=leg.sum){
+          clearInterval(timer);
+          legIdx++;
+          if(legIdx<result.route.legs.length)setTimeout(playLeg,450);
+          else setTimeout(finishRoll,500);
+        }
+      },230);
+    },550);
+  }
+  function finishRoll(){
+    facesEl.style.display='none';
+    _diceAnimating=false;
+    renderDiceBoard();
+    showDiceReveal(result);
+  }
+  playLeg();
+}
+function showDiceReveal(result){
+  const {prize,grant}=result;
+  let icon=prize.icon||'🎁',name=prize.label||'',sub='쿠폰함에 자동으로 담겼어요';
+  if(grant.kind==='stamp')sub='스탬프 카드에 자동 적립됐어요 ⭐';
+  else if(grant.kind==='again')sub='주사위 1개를 더 받았어요! 계속 굴려보세요';
+  else if(grant.kind==='jackpot'){icon='🏆';name=grant.sub.label;sub='상위 1%의 행운! 직원에게 이 화면을 보여주세요 🎊';}
+  document.getElementById('dice-reveal-box').innerHTML=
+    `<div class="drv-ic">${icon}</div><div class="drv-name">${name}</div><div class="drv-sub">${sub}</div>`;
+  document.getElementById('dice-reveal-overlay').style.display='flex';
+}
+function closeDiceReveal(){
+  document.getElementById('dice-reveal-overlay').style.display='none';
 }
 
 /* ════════════════════ 네이버 UID 추출 ════════════════════ */
@@ -2376,6 +2550,7 @@ function show(id){
   if(id==='s-scratch')initScratchCard();
   if(id==='s-card')initMainCard();
   if(id==='s-ladder')setTimeout(initLadder,60);
+  if(id==='s-dice')renderDiceBoard();
   if(id==='s-coupons'){document.querySelectorAll('[id^="ctab"]').forEach(b=>b.className='chip off');document.getElementById('ctab-available').className='chip on';renderCoupons('available')}
   if(id==='s-stamp')renderStamps();
   if(id==='s-survey')renderSurveyQuestions();
@@ -3162,6 +3337,7 @@ function goToMainGame(){
   if(gm==='scratch')show('s-scratch');
   else if(gm==='card')show('s-card');
   else if(gm==='ladder')show('s-ladder');
+  else if(gm==='dice')show('s-dice');
   else show('s-roulette');
 }
 
