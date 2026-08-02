@@ -185,35 +185,53 @@ body.dark #s-dice .scroll{background:linear-gradient(180deg,#2A2019 0%,#221A14 4
 #s-dice .topbar{background:transparent;border-bottom-color:rgba(0,0,0,.06)}
 body.dark #s-dice .topbar{border-bottom-color:rgba(255,255,255,.06)}
 
-.dice-board{display:grid;grid-template-columns:repeat(4,1fr);gap:26px 12px;padding:30px 22px 18px;position:relative}
-.dtile{aspect-ratio:1;position:relative}
-.dice-board .dtile:nth-child(4n+2){transform:translateY(9px)}
-.dice-board .dtile:nth-child(4n+3){transform:translateY(-5px)}
-.dice-board .dtile:nth-child(4n+4){transform:translateY(4px)}
-.dtile-cap{position:absolute;inset:8%;border-radius:20%;transform:rotate(45deg);
-  animation:diceCapBreathe 3.6s ease-in-out infinite;animation-delay:calc(var(--i,0)*.12s)}
-@keyframes diceCapBreathe{0%,100%{transform:rotate(45deg) scale(1)}50%{transform:rotate(45deg) scale(1.035)}}
-.dtile-content{position:relative;z-index:2;display:flex;align-items:center;justify-content:center;height:100%}
-.dt-ic{font-size:25px;line-height:1;filter:drop-shadow(0 2px 2px rgba(60,30,0,.18))}
-.dt-badge{position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);background:var(--white);border-radius:20px;
-  padding:2px 8px;font-size:9px;font-weight:800;color:var(--t2);box-shadow:0 3px 7px rgba(60,30,0,.18);white-space:nowrap;z-index:3}
-body.dark .dt-badge{background:#2b2f38;color:var(--t2)}
-.dt-stamp .dtile-cap{background:linear-gradient(155deg,#F1E9FF,#D9C6FF);box-shadow:0 5px 0 #B49EE8,0 11px 16px -6px rgba(120,80,200,.4),inset 0 2px 0 rgba(255,255,255,.75),inset 0 -3px 6px rgba(120,80,200,.18)}
-body.dark .dt-stamp .dtile-cap{background:linear-gradient(155deg,#3B3158,#2A2244);box-shadow:0 5px 0 #1c1836,0 11px 16px -6px rgba(0,0,0,.5),inset 0 2px 0 rgba(255,255,255,.12),inset 0 -3px 6px rgba(0,0,0,.3)}
-.dt-coupon .dtile-cap{background:linear-gradient(155deg,#FFF1CE,#FFDD9C);box-shadow:0 5px 0 #E8B860,0 11px 16px -6px rgba(210,150,40,.4),inset 0 2px 0 rgba(255,255,255,.8),inset 0 -3px 6px rgba(180,110,20,.18)}
-body.dark .dt-coupon .dtile-cap{background:linear-gradient(155deg,#463420,#332616);box-shadow:0 5px 0 #21170c,0 11px 16px -6px rgba(0,0,0,.5),inset 0 2px 0 rgba(255,255,255,.1),inset 0 -3px 6px rgba(0,0,0,.3)}
-.dt-again .dtile-cap{background:linear-gradient(155deg,#DEFBEC,#B4EFD1);box-shadow:0 5px 0 #7FD3A8,0 11px 16px -6px rgba(30,150,100,.35),inset 0 2px 0 rgba(255,255,255,.8),inset 0 -3px 6px rgba(20,120,80,.18)}
-body.dark .dt-again .dtile-cap{background:linear-gradient(155deg,#1E4534,#153427);box-shadow:0 5px 0 #0c2018,0 11px 16px -6px rgba(0,0,0,.5),inset 0 2px 0 rgba(255,255,255,.1),inset 0 -3px 6px rgba(0,0,0,.3)}
-.dt-jackpot .dtile-cap{background:linear-gradient(155deg,#FFEDA8,#F5B93F);
-  box-shadow:0 5px 0 #C08616,0 14px 22px -6px rgba(190,120,10,.55),inset 0 3px 0 rgba(255,255,255,.85),inset 0 -4px 8px rgba(120,70,0,.25);
-  animation:diceJackpotGlow 2.2s ease-in-out infinite,diceCapBreathe 3.6s ease-in-out infinite}
-@keyframes diceJackpotGlow{0%,100%{filter:brightness(1) saturate(1)}50%{filter:brightness(1.18) saturate(1.15)}}
-.dtile.here .dtile-cap{outline:2.5px solid var(--blue);outline-offset:2px}
-.dtile.passing .dtile-cap{transform:rotate(45deg) scale(1.22);transition:transform .12s}
-.dt-pawn{position:absolute;left:50%;top:-24%;transform:translateX(-50%);font-size:24px;z-index:5;
-  filter:drop-shadow(0 6px 5px rgba(0,0,0,.32));animation:dicePawnBob 1.5s ease-in-out infinite}
-@keyframes dicePawnBob{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-5px)}}
-@media (prefers-reduced-motion:reduce){.dtile-cap{animation:none!important}.dt-pawn{animation:none}.dt-jackpot .dtile-cap{animation:none}}
+/* 아이소메트릭 키캡 계단 보드 — 키캡이 위로 올라가는 뱀 모양 경로 */
+.dice-board{position:relative;width:330px;height:376px;margin:6px auto 0;padding:0}
+.dtile{position:absolute;width:66px;height:66px}
+/* 키캡 윗면을 아이소메트릭으로 눕히고, 레이어드 box-shadow로 옆면을 압출.
+   회전 후 로컬 X·Y축이 화면상 같은 대각선으로 매핑되므로 (n,n) 오프셋이 화면 수직 아래로 쌓임 */
+.dtile-cap{position:absolute;inset:0;border-radius:24%;background:var(--kct);
+  transform:rotateX(58deg) rotateZ(45deg);
+  box-shadow:1.3px 1.3px 0 var(--kcs),2.7px 2.7px 0 var(--kcs),4px 4px 0 var(--kcs),
+    5.3px 5.3px 0 var(--kcs),6.7px 6.7px 0 var(--kcs),8px 8px 0 var(--kcs),
+    9.3px 9.3px 0 var(--kcs),10.7px 10.7px 0 var(--kcs),12px 12px 0 var(--kcs),
+    13.3px 13.3px 0 var(--kcs),14.7px 14.7px 0 var(--kcs),16px 16px 0 var(--kcs),
+    17.3px 17.3px 0 var(--kcs),24px 24px 18px -6px rgba(120,80,30,.3)}
+.dtile-cap::after{content:'';position:absolute;inset:9% 9% 34%;border-radius:22%;
+  background:linear-gradient(180deg,rgba(255,255,255,.6),rgba(255,255,255,0))}
+.dtile-content{position:absolute;left:50%;top:1px;transform:translateX(-50%);z-index:3;line-height:1}
+.dt-ic{font-size:30px;line-height:1;display:block;filter:drop-shadow(0 4px 4px rgba(60,30,0,.28))}
+.dt-badge{position:absolute;left:50%;top:-15px;transform:translateX(-50%);background:#fff;border-radius:9px;
+  padding:3px 7px;font-size:9.5px;font-weight:800;color:#33373f;box-shadow:0 3px 9px rgba(60,40,10,.22);
+  white-space:nowrap;z-index:6}
+.dt-badge::after{content:'';position:absolute;left:50%;bottom:-4px;transform:translateX(-50%);
+  border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid #fff}
+.dt-badge.plain{background:none;box-shadow:none;color:#7A5230;font-size:12px;font-weight:900;
+  text-shadow:0 2px 3px rgba(255,255,255,.9)}
+.dt-badge.plain::after{display:none}
+body.dark .dt-badge{background:#2b2f38;color:#e8e6e1}
+body.dark .dt-badge::after{border-top-color:#2b2f38}
+body.dark .dt-badge.plain{background:none;color:#F0C98A;text-shadow:0 2px 3px rgba(0,0,0,.8)}
+.dt-stamp{--kct:linear-gradient(140deg,#F0E6FF,#D2BCFA);--kcs:#B49BEA}
+.dt-coupon{--kct:linear-gradient(140deg,#FFF4D8,#FFDF9C);--kcs:#EBBD62}
+.dt-again{--kct:linear-gradient(140deg,#FFE0E4,#FFB2BE);--kcs:#EE8B9B}
+.dt-jackpot{--kct:linear-gradient(140deg,#FFF0B0,#F7BE45);--kcs:#C88A18}
+body.dark .dt-stamp{--kct:linear-gradient(140deg,#463A68,#33285A);--kcs:#241C42}
+body.dark .dt-coupon{--kct:linear-gradient(140deg,#54401F,#3D2E14);--kcs:#2A1F0C}
+body.dark .dt-again{--kct:linear-gradient(140deg,#5A2C34,#432026);--kcs:#2E151A}
+body.dark .dt-jackpot{--kct:linear-gradient(140deg,#7A5A16,#5C420E);--kcs:#3E2C08}
+.dt-jackpot .dtile-cap{animation:diceJackpotGlow 2.2s ease-in-out infinite}
+@keyframes diceJackpotGlow{0%,100%{filter:brightness(1) saturate(1)}50%{filter:brightness(1.16) saturate(1.14)}}
+.dtile.here .dtile-cap{outline:3px solid var(--blue);outline-offset:2px}
+.dtile.passing{transform:translateY(-9px);transition:transform .13s}
+.dt-pawn{position:absolute;left:50%;top:-30px;transform:translateX(-50%);font-size:34px;z-index:7;
+  filter:drop-shadow(0 7px 6px rgba(0,0,0,.35));animation:dicePawnBob 1.5s ease-in-out infinite}
+@keyframes dicePawnBob{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-6px)}}
+@media (prefers-reduced-motion:reduce){.dt-pawn{animation:none}.dt-jackpot .dtile-cap{animation:none}}
+@media (max-width:359px){.dice-board{transform:scale(.87);transform-origin:top center;margin-bottom:-46px}}
+.dice-home-strip{display:flex;gap:2px;overflow:hidden;padding:6px 0 4px;justify-content:flex-start}
+.home-dtile{position:relative;width:66px;height:66px;flex:none;transform:scale(.6);transform-origin:top left;margin:0 -24px -22px 0}
+.home-dtile .dt-badge{display:none}
 
 .dice-status-bar{display:flex;align-items:center;justify-content:space-between;padding:0 22px;margin-bottom:10px}
 .dice-count-badge{font-family:monospace;font-size:13px;font-weight:800;color:#fff;padding:6px 14px;border-radius:20px;
@@ -1292,7 +1310,7 @@ body.dark .dice-jackpot-banner{background:linear-gradient(160deg,#4A3A18,#3A2C10
   </div>
   <div id="home-rank-bar" onclick="openVipModal()" style="background:var(--white);padding:10px 20px 14px;border-bottom:1px solid var(--border2);cursor:pointer"></div>
   <div class="scroll" style="background:var(--bg)">
-    <div style="margin:14px 16px;background:linear-gradient(135deg,#0a3d1f 0%,#03612f 100%);border-radius:20px;padding:24px;cursor:pointer;position:relative;overflow:hidden" onclick="goToMainGame()">
+    <div id="home-hero-card" style="margin:14px 16px;background:linear-gradient(135deg,#0a3d1f 0%,#03612f 100%);border-radius:20px;padding:24px;cursor:pointer;position:relative;overflow:hidden" onclick="goToMainGame()">
       <div style="position:absolute;right:-8px;top:-8px;opacity:.1;pointer-events:none"><svg viewBox="0 0 100 100" width="90" height="90" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="20" fill="#03C75A"/><path d="M20 76V24h16l27 40V24H79v52H63L36 36V76z" fill="white"/></svg></div>
       <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px">
         <svg viewBox="0 0 22 22" width="22" height="22" xmlns="http://www.w3.org/2000/svg"><rect width="22" height="22" rx="5" fill="#03C75A"/><path d="M5 17V5h3.8l5.4 8.2V5H17v12h-3.8L7.8 8.8V17z" fill="white"/></svg>
@@ -2340,16 +2358,11 @@ function _diceFaceHtml(n){
   const cells=pos.map(p=>{const r=Math.ceil(p/3),c=((p-1)%3)+1;return `<i style="grid-area:${r}/${c}"></i>`;}).join('');
   return `<div class="ddie">${cells}</div>`;
 }
-// 20칸을 4열 지그재그(뱀 모양)로 나열할 때, 화면상 순서대로의 칸 인덱스를 반환
-function _diceBoardOrder(n,cols){
-  const rows=Math.ceil(n/cols);const order=[];
-  for(let r=0;r<rows;r++){
-    const row=[];
-    for(let c=0;c<cols;c++){const idx=r*cols+c;if(idx<n)row.push(idx);}
-    if(r%2===1)row.reverse();
-    order.push(...row);
-  }
-  return order;
+// 칸 인덱스를 perRow개씩 묶어 계단식 보드의 각 행으로 나눔 (0번 칸이 맨 아래 행)
+function _diceRows(n,perRow){
+  const rows=[];
+  for(let i=0;i<n;i+=perRow)rows.push(Array.from({length:Math.min(perRow,n-i)},(_,k)=>i+k));
+  return rows;
 }
 function _diceDistTo(tiles,pos,prizeId){
   const n=tiles.length;
@@ -2363,22 +2376,30 @@ function _diceShortLabel(prize){
   if(prize.type==='again')return'한번더';
   return prize.label.length>5?prize.label.slice(0,4)+'…':prize.label;
 }
+// 타일 1개의 HTML. style로 위치를 직접 지정 (보드는 절대배치, 홈 미리보기는 빈 문자열)
+function _diceTileHtml(tileIdx,prize,here,style){
+  const isPlain=prize.type==='stamp';
+  return `<div class="dtile dt-${prize.type||'coupon'}${here?' here':''}" data-tile="${tileIdx}" style="${style||''}">`+
+    `<div class="dtile-cap"></div>`+
+    `<div class="dtile-content"><span class="dt-ic">${prize.icon||'🎁'}</span></div>`+
+    (here?'<span class="dt-pawn">🐧</span>':'')+
+    `<span class="dt-badge${isPlain?' plain':''}">${_diceShortLabel(prize)}</span></div>`;
+}
 function renderDiceBoard(){
   if(!STORE||!STORE.diceGame)return;
   const cfg=STORE.diceGame;
   if(!cfg.tiles||cfg.tiles.length!==cfg.boardSize)cfg.tiles=_diceBuildTiles(cfg.prizes,cfg.boardSize);
   const state=getMyDiceState();
-  const order=_diceBoardOrder(cfg.tiles.length,4);
+  const PER_ROW=5,STEP_X=58,STEP_Y=14,ROW_H=74;
+  const rows=_diceRows(cfg.tiles.length,PER_ROW);
   const wrap=document.getElementById('dice-board-grid');
-  wrap.innerHTML=order.map((tileIdx,i)=>{
-    const prizeId=cfg.tiles[tileIdx];
-    const prize=cfg.prizes.find(p=>p.id===prizeId)||{};
-    const here=tileIdx===state.pos;
-    return `<div class="dtile dt-${prize.type||'coupon'}${here?' here':''}" data-tile="${tileIdx}">`+
-      `<div class="dtile-cap" style="--i:${i%6}"></div>`+
-      `<div class="dtile-content"><span class="dt-ic">${prize.icon||'🎁'}</span>${here?'<span class="dt-pawn">🐧</span>':''}</div>`+
-      `<span class="dt-badge">${_diceShortLabel(prize)}</span></div>`;
-  }).join('');
+  wrap.innerHTML=rows.map((row,ri)=>row.map((tileIdx,i)=>{
+    const prize=cfg.prizes.find(p=>p.id===cfg.tiles[tileIdx])||{};
+    const col=ri%2===1?(PER_ROW-1-i):i;  // 홀수 행은 오른쪽→왼쪽 (뱀 모양)
+    const bottom=ri*ROW_H+i*STEP_Y;
+    const style=`left:${6+col*STEP_X}px;bottom:${bottom}px;z-index:${400-Math.round(bottom)}`;
+    return _diceTileHtml(tileIdx,prize,tileIdx===state.pos,style);
+  }).join('')).join('');
   document.getElementById('dice-count').textContent=state.dice;
   const dist=_diceDistTo(cfg.tiles,state.pos,'jack');
   document.getElementById('dice-jackpot-banner').textContent=dist!=null?('🏆 잭팟까지 '+dist+'칸!'):'';
@@ -2386,6 +2407,26 @@ function renderDiceBoard(){
   btn.disabled=false;
   if(state.dice>0){btn.textContent='🎲 주사위 굴리기';btn.onclick=startDiceRoll;}
   else{btn.textContent='🎲 주사위 받으러 가기';btn.onclick=openDiceMissions;}
+}
+// 홈 화면 히어로 카드를 주사위 보드 미리보기로 교체 — 들어가기 전에 "해볼 만하다"는 걸 바로 보여줌
+function renderDiceHomePreview(heroCard){
+  const cfg=STORE.diceGame;
+  if(!cfg)return;
+  if(!cfg.tiles||cfg.tiles.length!==cfg.boardSize)cfg.tiles=_diceBuildTiles(cfg.prizes,cfg.boardSize);
+  heroCard.style.background='linear-gradient(160deg,#FFD98A 0%,#FFB258 55%,#FF8A3D 100%)';
+  const previewTiles=cfg.tiles.slice(0,7).map(pid=>{
+    const prize=cfg.prizes.find(p=>p.id===pid)||{};
+    return `<div class="dtile home-dtile dt-${prize.type||'coupon'}"><div class="dtile-cap"></div><div class="dtile-content"><span class="dt-ic">${prize.icon||'🎁'}</span></div></div>`;
+  }).join('');
+  const diceCount=currentUser?getMyDiceState().dice:0;
+  heroCard.innerHTML=
+    `<div style="display:flex;align-items:center;gap:7px;margin-bottom:8px">`+
+    `<span style="font-size:18px">🎲</span><div style="font-size:12px;color:rgba(255,255,255,.9);font-weight:700;letter-spacing:.5px">주사위 이벤트 · 꽝 없음</div></div>`+
+    `<div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:2px;line-height:1.3;text-shadow:0 2px 8px rgba(0,0,0,.25)">굴리면 무조건 당첨!<br>지금 확인해보세요 🎁</div>`+
+    `<div class="dice-home-strip">${previewTiles}</div>`+
+    `<div style="display:flex;align-items:center;gap:10px">`+
+    `<div style="background:#fff;color:#B5551A;font-size:14px;font-weight:800;padding:10px 20px;border-radius:11px" class="cta-pulse">🎲 굴리러 가기</div>`+
+    `<div style="font-size:12px;color:rgba(255,255,255,.9);font-weight:700">${currentUser?('내 주사위 '+diceCount+'개'):'참여하면 주사위 지급'}</div></div>`;
 }
 let _diceAnimating=false;
 function startDiceRoll(){
@@ -3336,6 +3377,7 @@ function refreshHome(){
         return `<div${idx>0?' style="border-top:1px solid var(--border2)"':''}><div class="list-item" style="opacity:${ev.active?1:.4};cursor:${ev.active?'pointer':'default'};padding:10px 14px" onclick="${ev.active?`show('s-login')`:''}"><div class="li-icon" style="background:${meta.bg};display:flex;align-items:center;justify-content:center;overflow:hidden;padding:0;width:40px;height:40px;border-radius:12px">${meta.icon}</div><div class="li-body"><div class="li-title" style="font-size:14px">${meta.label}</div><div class="li-sub" style="color:var(--t3)">${ev.active?'리뷰 작성 후 게임 참여':'현재 비활성화됨'}</div></div><span style="font-size:18px;color:var(--t4)">›</span></div></div>`;
       }).join('');}
     }
+    if(gm==='dice')renderDiceHomePreview(document.getElementById('home-hero-card'));
     return;
   }
 
@@ -3397,6 +3439,7 @@ function refreshHome(){
       rankBarEl.innerHTML=`<div style="text-align:center;font-size:13px;font-weight:700;color:#8b5cf6;padding:4px 0">${rank.emoji} 최고 등급 달성! 감사합니다 💜</div>`;
     }
   }
+  if(gm==='dice')renderDiceHomePreview(document.getElementById('home-hero-card'));
 }
 
 /* ════════════════════ 효과음 (MP3) ════════════════════ */
