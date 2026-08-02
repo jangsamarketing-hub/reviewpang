@@ -2014,6 +2014,10 @@ function migrateStore(s){
   });}
   // 메인 게임이 카드뽑기면 룰렛으로 교체
   if(s.gameMode==='card')s.gameMode='roulette';
+  // 🎲 주사위 게임: 매장별로 독립된 상품·확률·고객 진행상태 (Supabase에 저장됨, 로컬 전용 아님)
+  if(!s.diceGame)s.diceGame=_diceDefaultGame();
+  if(!s.diceGame.tiles||s.diceGame.tiles.length!==(s.diceGame.boardSize||20))s.diceGame.tiles=_diceBuildTiles(s.diceGame.prizes,s.diceGame.boardSize||20);
+  if(!s.diceState)s.diceState={};
   return s;
 }
 Object.keys(storesDB).forEach(k=>{storesDB[k]=migrateStore(storesDB[k])});
@@ -2023,6 +2027,182 @@ let STORE_ID=detectStoreId();
 let STORE=storesDB[STORE_ID]||null;
 
 function saveState(){if(STORE){STORE._sbTs=Date.now();storesDB[STORE_ID]=STORE;saveStoresDB();_sbPush(STORE_ID);}}
+
+/* ════════════════════ 🎲 주사위 게임 엔진 (new-game-v2) ════════════════════
+   순서: ① 상품 추첨(weight) → ② 그 상품이 있는 칸까지 거리 역산 → ③ 그 거리에 맞는
+   주사위 눈 배정 → ④ 한 번에 못 가면 '더블' 2연속 굴림. 확률은 항상 weight를 그대로 따름 —
+   보드 위 위치와 무관하게 매 회 설정한 확률 그대로 추첨된다. */
+function _diceDefaultGame(){
+  return {
+    enabled:false,
+    boardSize:20,
+    firstRollFree:true,
+    nearMissGap:3,
+    verifySeconds:60,
+    maxAgainPerDay:2,
+    prizes:[
+      {id:'st1',label:'스탬프 +1',icon:'⭐',type:'stamp',amount:1,weight:32,cost:0},
+      {id:'st2',label:'스탬프 +2',icon:'⭐',type:'stamp',amount:2,weight:16,cost:0},
+      {id:'dr1',label:'음료 1잔',icon:'🥤',type:'coupon',weight:14,cost:800,benefit:'음료 1잔 무료'},
+      {id:'st3',label:'스탬프 +3',icon:'⭐',type:'stamp',amount:3,weight:10,cost:0},
+      {id:'again',label:'한 번 더!',icon:'🎲',type:'again',weight:8,cost:0},
+      {id:'lq1',label:'주류 1병',icon:'🍺',type:'coupon',weight:7,cost:1300,benefit:'주류 1병 무료'},
+      {id:'sd1',label:'지정 사이드',icon:'🍟',type:'coupon',weight:5,cost:2000,benefit:'지정 사이드 메뉴 무료'},
+      {id:'st5',label:'스탬프 +5',icon:'⭐',type:'stamp',amount:5,weight:4,cost:0},
+      {id:'sd2',label:'희망 사이드',icon:'🍤',type:'coupon',weight:3,cost:3000,benefit:'희망 사이드 메뉴 무료'},
+      {id:'jack',label:'잭팟',icon:'🏆',type:'jackpot',weight:1,minSlots:2,sub:[
+        {label:'지정 메인메뉴 1개',weight:50,cost:5000,benefit:'지정 메인메뉴 1개 무료',staffCheck:true},
+        {label:'희망 메인메뉴 1개',weight:30,cost:7000,benefit:'희망 메인메뉴 1개 무료',staffCheck:true},
+        {label:'3만원 식사권',weight:15,cost:10000,benefit:'3만원 상당 식사권',staffCheck:true},
+        {label:'5만원 식사권',weight:4,cost:17000,benefit:'5만원 상당 식사권',staffCheck:true},
+        {label:'10만원 식사권',weight:1,cost:33000,benefit:'10만원 상당 식사권',staffCheck:true}
+      ]}
+    ],
+    reviewParts:{
+      intro:['친구 추천으로 방문했는데','지나가다 들렀는데','예전부터 가보고 싶었던 곳이라','우연히 알게 돼서 왔는데'],
+      praise:['맛있어요','친절해요','깨끗해요','가성비굿','분위기가 좋아요','양이 많아요','주차가 편해요'],
+      outro:['또 오려구요~','재방문 의사 100%예요!','다음에 또 올게요','강추합니다']
+    },
+    missions:[
+      {id:'survey',label:'만족도 설문',dice:1,verify:'internal',premium:false},
+      {id:'naver',label:'네이버 영수증 리뷰',dice:1,verify:'dwell',premium:false,photoBonus:1},
+      {id:'kakao',label:'카카오맵 리뷰',dice:1,verify:'dwell',premium:false},
+      {id:'google',label:'구글맵 리뷰',dice:1,verify:'dwell',premium:true},
+      {id:'insta',label:'인스타 스토리',dice:1,verify:'dwell',premium:true}
+    ],
+    tiles:null
+  };
+}
+
+// 가중치 배열에서 하나 추첨 (roulette pickWinner()와 동일한 누적합 방식)
+function _diceWeightedPick(list){
+  const total=list.reduce((a,p)=>a+(+p.weight||0),0);
+  const rand=Math.random()*(total>0?total:1);
+  let cum=0;
+  for(const p of list){cum+=(+p.weight||0);if(rand<cum)return p;}
+  return list[list.length-1];
+}
+
+// weight 비례로 보드 칸에 상품을 흩뿌린다 (Smooth Weighted Round-Robin) — 같은 상품끼리 뭉치지 않고 고르게 분산됨
+function _diceBuildTiles(prizes,boardSize){
+  boardSize=boardSize||20;
+  const n=prizes.length;
+  if(!n)return new Array(boardSize).fill(null);
+  const totalW=prizes.reduce((a,p)=>a+(+p.weight||0),0)||1;
+  const raw=prizes.map(p=>(+p.weight||0)/totalW*boardSize);
+  let slots=prizes.map((p,i)=>Math.max(p.minSlots||1,Math.floor(raw[i])));
+  let diff=boardSize-slots.reduce((a,b)=>a+b,0);
+  if(diff>0){
+    const order=prizes.map((p,i)=>({i,frac:raw[i]-Math.floor(raw[i])})).sort((a,b)=>b.frac-a.frac);
+    let k=0;
+    while(diff>0){slots[order[k%n].i]++;diff--;k++;}
+  }else if(diff<0){
+    let guard=0;
+    while(diff<0&&guard<1000){
+      const order=prizes.map((p,i)=>({i,over:slots[i]-(p.minSlots||1)})).sort((a,b)=>b.over-a.over);
+      if(!order.length||order[0].over<=0)break;
+      slots[order[0].i]--;diff++;guard++;
+    }
+  }
+  const cur=slots.map(()=>0);
+  const tiles=[];
+  for(let t=0;t<boardSize;t++){
+    let best=-1;
+    for(let i=0;i<n;i++){cur[i]+=slots[i];if(best===-1||cur[i]>cur[best])best=i;}
+    tiles.push(prizes[best].id);
+    cur[best]-=boardSize;
+  }
+  return tiles;
+}
+
+// 합계를 이루는 유효한 주사위 눈(1~6, 1~6) 한 쌍을 무작위로 반환
+function _diceSplitSum(sum){
+  const lo=Math.max(1,sum-6),hi=Math.min(6,sum-1);
+  const a=lo+Math.floor(Math.random()*(hi-lo+1));
+  return [a,sum-a];
+}
+
+// 현재 위치에서 특정 상품 칸까지 필요한 눈을 역산. 한 번에 안 되면(거리 1 또는 13~19) '더블' 2연속 굴림으로 처리
+function _diceRouteToPrize(tiles,pos,prizeId){
+  const n=tiles.length;
+  const hits=[];
+  for(let d=1;d<=n;d++){if(tiles[(pos+d)%n]===prizeId)hits.push(d);}
+  if(!hits.length)return null;
+  const inRange=hits.filter(d=>d>=2&&d<=12);
+  if(inRange.length){
+    const d=inRange[Math.floor(Math.random()*inRange.length)];
+    const [a,b]=_diceSplitSum(d);
+    return {legs:[{a,b,sum:d}],finalDist:d,double:false};
+  }
+  let dist=hits[0];
+  if(dist===1)dist+=n; // 바로 다음 칸은 주사위 합(최소 2)으로 표현 불가 → 한 바퀴 더 돌아서 처리
+  const loH1=Math.max(2,dist-12),hiH1=Math.min(12,dist-2);
+  const h1=loH1+Math.floor(Math.random()*(hiH1-loH1+1));
+  const h2=dist-h1;
+  const [a1,b1]=_diceSplitSum(h1),[a2,b2]=_diceSplitSum(h2);
+  return {legs:[{a:a1,b:b1,sum:h1},{a:a2,b:b2,sum:h2}],finalDist:dist,double:true};
+}
+
+function getMyDiceState(){
+  if(!STORE.diceState)STORE.diceState={};
+  if(!currentUser)return{pos:0,dice:0,laps:0,missionsDone:[],againToday:0,lastDate:''};
+  if(!STORE.diceState[currentUser.id])STORE.diceState[currentUser.id]={pos:0,dice:0,laps:0,missionsDone:[],againToday:0,lastDate:''};
+  return STORE.diceState[currentUser.id];
+}
+
+// 상품 1개 추첨 + 이동 경로 계산 (지급은 하지 않음 — 화면 연출용 미리보기)
+function rollDicePreview(){
+  const cfg=STORE.diceGame;
+  if(!cfg.tiles||cfg.tiles.length!==cfg.boardSize)cfg.tiles=_diceBuildTiles(cfg.prizes,cfg.boardSize);
+  const state=getMyDiceState();
+  const prize=_diceWeightedPick(cfg.prizes);
+  const route=_diceRouteToPrize(cfg.tiles,state.pos,prize.id);
+  return{prize,route,fromPos:state.pos};
+}
+
+// 잭팟 칸 2차 추첨
+function resolveJackpot(prize){return _diceWeightedPick(prize.sub);}
+
+// 실제 지급 처리: 스탬프 자동 적립 / 쿠폰 자동 발급 / 한번더 / 잭팟은 2차 추첨 후 직원확인 쿠폰 발급
+function grantDicePrize(prize){
+  const state=getMyDiceState();
+  if(prize.type==='stamp'){
+    for(let i=0;i<(prize.amount||1);i++)grantStamp('dice');
+    return{kind:'stamp',amount:prize.amount||1};
+  }
+  if(prize.type==='again'){
+    state.dice+=1;
+    return{kind:'again'};
+  }
+  if(prize.type==='jackpot'){
+    const sub=resolveJackpot(prize);
+    const cid=genId();
+    STORE.coupons.unshift({id:cid,uid:currentUser.id,name:'🏆 잭팟: '+sub.label,benefit:sub.benefit,expires:expDate(30),cond:'직원 확인 후 제공',status:'available',created:today(),staffCheck:true});
+    saveState();
+    return{kind:'jackpot',sub};
+  }
+  const cid=genId();
+  STORE.coupons.unshift({id:cid,uid:currentUser.id,name:'🎲 '+prize.label,benefit:prize.benefit,expires:expDate(30),cond:'1인 1회',status:'available',created:today(),isDice:true});
+  saveState();
+  return{kind:'coupon',prize};
+}
+
+// 한 번 굴리기: 주사위 1개 소모 → 상품 추첨 → 말 이동 → 지급까지 한 번에 처리
+function rollDice(){
+  const state=getMyDiceState();
+  if(state.dice<=0)return{error:'no-dice'};
+  const {prize,route}=rollDicePreview();
+  if(!route)return{error:'no-route'};
+  state.dice-=1;
+  const n=STORE.diceGame.tiles.length;
+  const fromPos=state.pos;
+  let pos=fromPos;
+  route.legs.forEach(leg=>{pos=(pos+leg.sum)%n;});
+  state.pos=pos;
+  const grant=grantDicePrize(prize);
+  saveState();
+  return{prize,route,fromPos,toPos:pos,grant};
+}
 
 /* ════════════════════ 네이버 UID 추출 ════════════════════ */
 function extractNaverUID(url){
