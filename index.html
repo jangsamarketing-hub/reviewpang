@@ -179,31 +179,62 @@ body.dark .success-msg{color:#3ddc97}
 .review-links-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding-bottom:0}
 .review-links-sheet{background:var(--white);border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px 20px 40px}
 
-/* ══════════ 🎲 주사위 게임 ══════════ */
-.dice-board{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:16px}
-.dtile{aspect-ratio:1;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;position:relative;font-size:10px;font-weight:800;text-align:center;padding:2px;border:1px solid transparent}
-.dtile .dt-ic{font-size:18px;line-height:1}
-.dtile .dt-lb{font-size:9px;line-height:1.1;color:var(--t2)}
-.dt-stamp{background:#f3f0ff}
-body.dark .dt-stamp{background:#241e3a}
-.dt-coupon{background:#fff8e6}
-body.dark .dt-coupon{background:#2e2814}
-.dt-again{background:var(--green-light)}
-.dt-jackpot{background:linear-gradient(150deg,#fde68a,#f5b925);box-shadow:0 0 0 2px #d97706 inset;animation:diceJackpotGlow 2.2s ease-in-out infinite}
-@keyframes diceJackpotGlow{0%,100%{filter:brightness(1)}50%{filter:brightness(1.16)}}
-.dtile.here{outline:2.5px solid var(--blue);outline-offset:1px}
-.dtile.passing{transform:scale(1.14);transition:transform .12s}
-.dt-pawn{position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);font-size:18px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35));z-index:2}
-.dice-status-bar{display:flex;align-items:center;justify-content:space-between;padding:0 20px;margin-bottom:4px}
-.dice-count-badge{font-family:monospace;font-size:13px;font-weight:800;background:var(--t1);color:var(--white);padding:5px 12px;border-radius:20px}
-.dice-jackpot-banner{font-size:12px;font-weight:700;color:#b45309;text-align:center;padding:8px;background:#fff8e6;border-radius:10px;margin:0 16px 10px}
-body.dark .dice-jackpot-banner{background:#2e2814;color:#f5b925}
-#dice-faces{display:none;justify-content:center;gap:12px;padding:14px 0}
-.ddie{width:48px;height:48px;background:var(--white);border:1.5px solid var(--border);border-radius:11px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:7px;gap:2px}
-.ddie i{background:var(--blue);border-radius:50%;width:7px;height:7px;align-self:center;justify-self:center}
+/* ══════════ 🎲 주사위 게임 (프리미엄) ══════════ */
+#s-dice .scroll{background:linear-gradient(180deg,#FFF7EA 0%,#FDEDD6 45%,#FBE4C8 100%)}
+body.dark #s-dice .scroll{background:linear-gradient(180deg,#2A2019 0%,#221A14 45%,#1B140F 100%)}
+#s-dice .topbar{background:transparent;border-bottom-color:rgba(0,0,0,.06)}
+body.dark #s-dice .topbar{border-bottom-color:rgba(255,255,255,.06)}
+
+.dice-board{display:grid;grid-template-columns:repeat(4,1fr);gap:26px 12px;padding:30px 22px 18px;position:relative}
+.dtile{aspect-ratio:1;position:relative}
+.dice-board .dtile:nth-child(4n+2){transform:translateY(9px)}
+.dice-board .dtile:nth-child(4n+3){transform:translateY(-5px)}
+.dice-board .dtile:nth-child(4n+4){transform:translateY(4px)}
+.dtile-cap{position:absolute;inset:8%;border-radius:20%;transform:rotate(45deg);
+  animation:diceCapBreathe 3.6s ease-in-out infinite;animation-delay:calc(var(--i,0)*.12s)}
+@keyframes diceCapBreathe{0%,100%{transform:rotate(45deg) scale(1)}50%{transform:rotate(45deg) scale(1.035)}}
+.dtile-content{position:relative;z-index:2;display:flex;align-items:center;justify-content:center;height:100%}
+.dt-ic{font-size:25px;line-height:1;filter:drop-shadow(0 2px 2px rgba(60,30,0,.18))}
+.dt-badge{position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);background:var(--white);border-radius:20px;
+  padding:2px 8px;font-size:9px;font-weight:800;color:var(--t2);box-shadow:0 3px 7px rgba(60,30,0,.18);white-space:nowrap;z-index:3}
+body.dark .dt-badge{background:#2b2f38;color:var(--t2)}
+.dt-stamp .dtile-cap{background:linear-gradient(155deg,#F1E9FF,#D9C6FF);box-shadow:0 5px 0 #B49EE8,0 11px 16px -6px rgba(120,80,200,.4),inset 0 2px 0 rgba(255,255,255,.75),inset 0 -3px 6px rgba(120,80,200,.18)}
+body.dark .dt-stamp .dtile-cap{background:linear-gradient(155deg,#3B3158,#2A2244);box-shadow:0 5px 0 #1c1836,0 11px 16px -6px rgba(0,0,0,.5),inset 0 2px 0 rgba(255,255,255,.12),inset 0 -3px 6px rgba(0,0,0,.3)}
+.dt-coupon .dtile-cap{background:linear-gradient(155deg,#FFF1CE,#FFDD9C);box-shadow:0 5px 0 #E8B860,0 11px 16px -6px rgba(210,150,40,.4),inset 0 2px 0 rgba(255,255,255,.8),inset 0 -3px 6px rgba(180,110,20,.18)}
+body.dark .dt-coupon .dtile-cap{background:linear-gradient(155deg,#463420,#332616);box-shadow:0 5px 0 #21170c,0 11px 16px -6px rgba(0,0,0,.5),inset 0 2px 0 rgba(255,255,255,.1),inset 0 -3px 6px rgba(0,0,0,.3)}
+.dt-again .dtile-cap{background:linear-gradient(155deg,#DEFBEC,#B4EFD1);box-shadow:0 5px 0 #7FD3A8,0 11px 16px -6px rgba(30,150,100,.35),inset 0 2px 0 rgba(255,255,255,.8),inset 0 -3px 6px rgba(20,120,80,.18)}
+body.dark .dt-again .dtile-cap{background:linear-gradient(155deg,#1E4534,#153427);box-shadow:0 5px 0 #0c2018,0 11px 16px -6px rgba(0,0,0,.5),inset 0 2px 0 rgba(255,255,255,.1),inset 0 -3px 6px rgba(0,0,0,.3)}
+.dt-jackpot .dtile-cap{background:linear-gradient(155deg,#FFEDA8,#F5B93F);
+  box-shadow:0 5px 0 #C08616,0 14px 22px -6px rgba(190,120,10,.55),inset 0 3px 0 rgba(255,255,255,.85),inset 0 -4px 8px rgba(120,70,0,.25);
+  animation:diceJackpotGlow 2.2s ease-in-out infinite,diceCapBreathe 3.6s ease-in-out infinite}
+@keyframes diceJackpotGlow{0%,100%{filter:brightness(1) saturate(1)}50%{filter:brightness(1.18) saturate(1.15)}}
+.dtile.here .dtile-cap{outline:2.5px solid var(--blue);outline-offset:2px}
+.dtile.passing .dtile-cap{transform:rotate(45deg) scale(1.22);transition:transform .12s}
+.dt-pawn{position:absolute;left:50%;top:-24%;transform:translateX(-50%);font-size:24px;z-index:5;
+  filter:drop-shadow(0 6px 5px rgba(0,0,0,.32));animation:dicePawnBob 1.5s ease-in-out infinite}
+@keyframes dicePawnBob{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-5px)}}
+@media (prefers-reduced-motion:reduce){.dtile-cap{animation:none!important}.dt-pawn{animation:none}.dt-jackpot .dtile-cap{animation:none}}
+
+.dice-status-bar{display:flex;align-items:center;justify-content:space-between;padding:0 22px;margin-bottom:10px}
+.dice-count-badge{font-family:monospace;font-size:13px;font-weight:800;color:#fff;padding:6px 14px;border-radius:20px;
+  background:linear-gradient(160deg,#3D4250,#20242E);box-shadow:0 3px 0 #14161c,0 6px 12px -4px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.18)}
+.dice-jackpot-banner{font-size:12.5px;font-weight:800;color:#7A4A06;text-align:center;padding:9px;border-radius:14px;margin:0 20px 6px;
+  background:linear-gradient(160deg,#FFF3D2,#FCE1A0);box-shadow:0 3px 0 #E3BA5C,0 8px 16px -6px rgba(200,140,20,.35),inset 0 1px 0 rgba(255,255,255,.7)}
+body.dark .dice-jackpot-banner{background:linear-gradient(160deg,#4A3A18,#3A2C10);color:#F5C866;box-shadow:0 3px 0 #241c0c,0 8px 16px -6px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.08)}
+
+#dice-faces{display:none;justify-content:center;gap:14px;padding:16px 0}
+.ddie{width:52px;height:52px;background:linear-gradient(160deg,#ffffff,#EFEFF2);border:none;border-radius:14px;
+  display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:8px;gap:2px;
+  box-shadow:0 4px 0 rgba(0,0,0,.14),0 9px 16px -6px rgba(0,0,0,.3),inset 0 2px 0 rgba(255,255,255,.9)}
+.ddie i{background:linear-gradient(160deg,#4C9BFF,#2E7CFB);border-radius:50%;width:7px;height:7px;align-self:center;justify-self:center;
+  box-shadow:0 1px 1px rgba(0,0,0,.2)}
 .ddie.spin{animation:diceTumble .45s linear infinite}
 @keyframes diceTumble{to{transform:rotate(360deg)}}
-@media (prefers-reduced-motion:reduce){.ddie.spin{animation:none}.dt-jackpot{animation:none}}
+@media (prefers-reduced-motion:reduce){.ddie.spin{animation:none}}
+#dice-roll-btn{background:linear-gradient(180deg,#57A6FF,#2E7CFB);border:none;box-shadow:0 5px 0 #1E5FD0,0 10px 20px -5px rgba(46,124,251,.5),inset 0 1px 0 rgba(255,255,255,.3);
+  transform:translateY(0);transition:transform .08s,box-shadow .08s}
+#dice-roll-btn:active{transform:translateY(4px);box-shadow:0 1px 0 #1E5FD0,0 3px 8px -3px rgba(46,124,251,.5)}
+#dice-roll-btn:disabled{opacity:.75}
 .dice-reveal-box{background:var(--white);border-radius:22px;width:100%;max-width:320px;padding:28px 24px;text-align:center}
 .drv-ic{font-size:52px;margin-bottom:10px}
 .drv-name{font-size:20px;font-weight:900;color:var(--t1)}
@@ -2339,13 +2370,14 @@ function renderDiceBoard(){
   const state=getMyDiceState();
   const order=_diceBoardOrder(cfg.tiles.length,4);
   const wrap=document.getElementById('dice-board-grid');
-  wrap.innerHTML=order.map(tileIdx=>{
+  wrap.innerHTML=order.map((tileIdx,i)=>{
     const prizeId=cfg.tiles[tileIdx];
     const prize=cfg.prizes.find(p=>p.id===prizeId)||{};
     const here=tileIdx===state.pos;
     return `<div class="dtile dt-${prize.type||'coupon'}${here?' here':''}" data-tile="${tileIdx}">`+
-      `<span class="dt-ic">${prize.icon||'🎁'}</span><span class="dt-lb">${_diceShortLabel(prize)}</span>`+
-      `${here?'<span class="dt-pawn">🐧</span>':''}</div>`;
+      `<div class="dtile-cap" style="--i:${i%6}"></div>`+
+      `<div class="dtile-content"><span class="dt-ic">${prize.icon||'🎁'}</span>${here?'<span class="dt-pawn">🐧</span>':''}</div>`+
+      `<span class="dt-badge">${_diceShortLabel(prize)}</span></div>`;
   }).join('');
   document.getElementById('dice-count').textContent=state.dice;
   const dist=_diceDistTo(cfg.tiles,state.pos,'jack');
