@@ -263,6 +263,15 @@ body.dark .dt-jackpot{--kct:linear-gradient(140deg,#7A5A16,#5C420E);--kcs:#3E2C0
 .home-pawn{position:absolute;z-index:50;width:44px;display:flex;justify-content:center}
 .home-pawn svg{display:block;filter:drop-shadow(0 5px 5px rgba(0,0,0,.3))}
 
+/* 리뷰 문구 조립기 */
+.rv-pills{display:flex;flex-wrap:wrap;gap:6px}
+.rv-pill{font-size:12.5px;font-weight:700;padding:7px 12px;border-radius:100px;cursor:pointer;
+  border:1.5px solid var(--border);background:var(--white);color:var(--t2);transition:all .12s}
+.rv-pill.on{background:var(--blue);color:#fff;border-color:transparent;
+  box-shadow:0 3px 9px -2px rgba(49,130,246,.5)}
+.rv-draft{background:var(--bg);border:1.5px dashed var(--border);border-radius:14px;
+  padding:14px;font-size:13.5px;line-height:1.75;color:var(--t1);white-space:pre-wrap;min-height:74px}
+
 .dice-status-bar{display:flex;align-items:center;justify-content:space-between;padding:0 22px;margin-bottom:10px}
 .dice-count-badge{font-family:monospace;font-size:13px;font-weight:800;color:#fff;padding:6px 14px;border-radius:20px;
   background:linear-gradient(160deg,#3D4250,#20242E);box-shadow:0 3px 0 #14161c,0 6px 12px -4px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.18)}
@@ -1734,6 +1743,26 @@ body.dark .dice-jackpot-banner{background:linear-gradient(160deg,#4A3A18,#3A2C10
   </div>
 </div>
 
+<!-- ══════════ 🎲 리뷰 문구 조립기 ══════════ -->
+<div id="dice-review-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:flex-end;justify-content:center">
+  <div style="background:var(--white);border-radius:24px 24px 0 0;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;padding:20px 18px 30px">
+    <div style="width:40px;height:4px;background:var(--border);border-radius:4px;margin:0 auto 16px"></div>
+    <div style="font-size:17px;font-weight:900;color:var(--t1);margin-bottom:3px">어떤 점이 좋았나요?</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:12px">고르면 리뷰 문구를 만들어 드려요</div>
+    <div id="dice-review-chips" class="rv-pills"></div>
+    <div style="font-size:13px;font-weight:800;color:var(--t1);margin:16px 0 8px">📝 내 리뷰 초안</div>
+    <div id="dice-review-draft" class="rv-draft"></div>
+    <div style="background:var(--blue-light);border-radius:10px;padding:10px 12px;font-size:11.5px;color:var(--t2);line-height:1.6;margin-top:10px">
+      💡 설문 답변으로 <b>사람마다 다른 문장</b>이 만들어져요.<br>똑같은 리뷰가 반복되면 네이버가 광고로 판단할 수 있거든요.</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">
+      <button class="btn btn-ghost" onclick="regenDiceReview()">🔀 다른 문장으로 바꾸기</button>
+      <button class="btn btn-blue" onclick="copyDiceReview()">📋 복사하기</button>
+      <button class="btn" id="dice-review-go" style="background:#03C75A;color:#fff;font-weight:800">리뷰 쓰러 가기 →</button>
+      <button class="btn btn-ghost" onclick="closeDiceReview()">닫기</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════ 🎲 리뷰 미션 체류시간 검증 ══════════ -->
 <div id="dice-dwell-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center;padding:16px">
   <div style="background:var(--white);border-radius:22px;width:100%;max-width:320px;padding:28px 24px;text-align:center">
@@ -2657,8 +2686,100 @@ function startDiceMission(id){
   if(m.premium&&!isPremium()){showVipModal();return;}
   closeDiceMissions();
   if(m.verify==='internal'){_diceMissionActive=id;show('s-survey');return;}
-  openDiceDwell(id);
+  openDiceReviewBuilder(id); // 문구를 만들어 준 뒤 → 외부 이동 → 체류시간 검증
 }
+/* ── 🎲 리뷰 문구 조립기 ──
+   고정 문구를 복붙시키면 같은 매장에 유사 리뷰가 쌓여 네이버 어뷰징 필터에 걸린다.
+   설문 답변 + 선택 칩 + 표현 변형을 조합해 사람마다 다른 문장을 만든다. */
+const _RV_INTRO={
+  '가족 모임':['가족들과 함께 방문했어요.','가족 모임으로 다녀왔습니다.','가족들이랑 같이 갔는데요,'],
+  '친구와 함께':['친구랑 같이 방문했어요.','친구와 함께 다녀왔습니다.','친구랑 갔는데요,'],
+  '연인과 데이트':['데이트로 방문했어요.','연인과 함께 다녀왔습니다.'],
+  '직장동료와 식사':['회사 동료들과 방문했어요.','직장 동료들이랑 다녀왔습니다.'],
+  '회식 또는 단체모임':['회식으로 방문했어요.','단체 모임으로 다녀왔습니다.'],
+  '혼밥':['혼자 조용히 한 끼 하고 왔어요.','혼밥하러 들렀습니다.'],
+  '기념일/특별한날':['특별한 날이라 방문했어요.','기념일에 다녀왔습니다.'],
+  '지인 추천':['지인 추천으로 방문했어요.','추천받고 찾아갔습니다.'],
+  '네이버 검색':['검색해보고 찾아갔어요.','네이버에서 보고 방문했습니다.'],
+  '인스타 SNS':['SNS에서 보고 방문했어요.','인스타에서 보고 찾아갔습니다.'],
+  '지나가다가':['지나가다 들렀어요.','근처 지나가다 방문했습니다.'],
+  '지난번에 방문':['재방문했어요.','전에 왔다가 또 갔습니다.']
+};
+const _RV_FALLBACK_INTRO=['우연히 들렀는데요,','예전부터 궁금했던 곳인데요,','근처에 볼일이 있어 방문했어요.'];
+const _RV_PRAISE={
+  taste:['음식이 정말 맛있었어요.','맛이 기대 이상이었어요.','메뉴가 하나같이 맛있더라구요.'],
+  amount:['양도 푸짐했어요.','생각보다 양이 많아서 좋았어요.'],
+  speed:['음식도 빨리 나왔어요.','주문하고 금방 나와서 좋았습니다.'],
+  kind:['사장님이 정말 친절하셨어요.','직원분들이 친절하게 챙겨주셨어요.'],
+  clean:['매장도 깔끔했어요.','매장이 청결해서 좋았습니다.'],
+  price:['가격 대비 만족도가 높아요.','가성비가 좋더라구요.'],
+  mood:['분위기도 편안했어요.','매장 분위기가 좋았습니다.'],
+  parking:['주차도 편했어요.','주차 공간이 넉넉해서 좋았어요.']
+};
+const _RV_OUTRO=['또 방문할 것 같아요 :)','재방문 의사 100%입니다!','다음에 또 오려구요~','주변에도 추천하고 싶네요 👍'];
+const _RV_CHIPS=[{k:'taste',l:'맛있어요'},{k:'kind',l:'친절해요'},{k:'clean',l:'깨끗해요'},
+  {k:'price',l:'가성비굿'},{k:'mood',l:'분위기좋음'},{k:'amount',l:'양이많아요'},
+  {k:'speed',l:'빨리나와요'},{k:'parking',l:'주차편해요'}];
+const _RV_MATRIX={'가격대비 맛':'taste','가격대비 양':'amount','조리 시간':'speed','직원 친절도':'kind','매장 청결도':'clean'};
+let _rvPicked=new Set(),_rvMissionId=null,_rvDraft='';
+function _rvPick(a){return a[Math.floor(Math.random()*a.length)];}
+function _rvLatestSurvey(){
+  const list=(STORE.surveys||[]).filter(s=>s.uid===(currentUser&&currentUser.id));
+  return list.length?list[list.length-1]:null;
+}
+function _rvGenerate(){
+  const sv=_rvLatestSurvey();
+  let intro=_rvPick(_RV_FALLBACK_INTRO);
+  if(sv&&sv.answers){
+    const hits=[];
+    Object.values(sv.answers).forEach(v=>{
+      (Array.isArray(v)?v:[v]).forEach(item=>{if(typeof item==='string'&&_RV_INTRO[item])hits.push(item);});
+    });
+    if(hits.length)intro=_rvPick(_RV_INTRO[_rvPick(hits)]);
+  }
+  const lines=Array.from(_rvPicked).map(k=>_rvPick(_RV_PRAISE[k]||[]));
+  for(let i=lines.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[lines[i],lines[j]]=[lines[j],lines[i]];}
+  const body=lines.length?lines.join(' '):'전체적으로 만족스러웠어요.';
+  return intro+' '+body+'\n'+_rvPick(_RV_OUTRO);
+}
+function renderDiceReviewBuilder(){
+  document.getElementById('dice-review-chips').innerHTML=_RV_CHIPS.map(c=>
+    `<span class="rv-pill${_rvPicked.has(c.k)?' on':''}" onclick="toggleDiceReviewChip('${c.k}')">${c.l}</span>`).join('');
+  _rvDraft=_rvGenerate();
+  document.getElementById('dice-review-draft').textContent=_rvDraft;
+}
+function toggleDiceReviewChip(k){
+  if(_rvPicked.has(k))_rvPicked.delete(k);else _rvPicked.add(k);
+  renderDiceReviewBuilder();
+}
+function regenDiceReview(){renderDiceReviewBuilder();}
+function copyDiceReview(){
+  if(navigator.clipboard)navigator.clipboard.writeText(_rvDraft).then(()=>toast('복사됐어요! 리뷰창에 붙여넣기 해주세요 📋')).catch(()=>fallbackCopy(_rvDraft));
+  else fallbackCopy(_rvDraft);
+}
+function closeDiceReview(){document.getElementById('dice-review-overlay').style.display='none';}
+function openDiceReviewBuilder(id){
+  const url=_diceMissionUrl(id);
+  if(!url){toast('사장님이 아직 리뷰 링크를 등록하지 않았어요');return;}
+  _rvMissionId=id;
+  _rvPicked=new Set();
+  const sv=_rvLatestSurvey();
+  if(sv&&sv.answers){ // 설문 매트릭스에서 8점 이상 준 항목은 자동 선택
+    Object.values(sv.answers).forEach(v=>{
+      if(v&&typeof v==='object'&&!Array.isArray(v)){
+        Object.keys(v).forEach(item=>{const key=_RV_MATRIX[item];if(key&&+v[item]>=8)_rvPicked.add(key);});
+      }
+    });
+  }
+  if(!_rvPicked.size)_rvPicked.add('taste');
+  renderDiceReviewBuilder();
+  const go=document.getElementById('dice-review-go');
+  go.style.background=id==='kakao'?'#FEE500':id==='google'?'#4285F4':id==='insta'?'#E1306C':'#03C75A';
+  go.style.color=id==='kakao'?'#191f28':'#fff';
+  go.onclick=function(){closeDiceReview();openDiceDwell(id,url);};
+  document.getElementById('dice-review-overlay').style.display='flex';
+}
+
 let _diceDwellMissionId=null,_diceDwellStart=0;
 function openDiceDwell(id){
   const m=(STORE.diceGame.missions||[]).find(x=>x.id===id);
