@@ -257,11 +257,14 @@ body.dark .dt-jackpot{--kct:linear-gradient(140deg,#7A5A16,#5C420E);--kcs:#3E2C0
   align-self:center;justify-self:center;box-shadow:0 1px 1px rgba(0,0,0,.3)}
 @media (prefers-reduced-motion:reduce){.die-wrap.rolling{animation:none}.die3d{transition:none}}
 
-.dice-home-strip{position:relative;height:96px;overflow:hidden;margin:10px -6px 12px}
-.home-dtile{position:absolute;width:66px;height:66px;transform:scale(.66);transform-origin:top left}
-.home-dtile .dt-badge{display:none}
-.home-pawn{position:absolute;z-index:50;width:44px;display:flex;justify-content:center}
-.home-pawn svg{display:block;filter:drop-shadow(0 5px 5px rgba(0,0,0,.3))}
+/* 홈·대기화면용 실제 보드 축소판 — 본판과 같은 기하/키캡을 그대로 쓴다 */
+.dice-mini{position:relative;overflow:hidden;width:100%}
+.dice-mini-inner{position:absolute;left:0;top:0;transform-origin:top left}
+.dice-mini .dtile{position:absolute;width:66px;height:66px}
+.dice-mini .dtile-cap{animation:none}
+.dice-mini .dt-jackpot .dtile-cap{animation:diceJackpotGlow 2.2s ease-in-out infinite}
+.home-pawn{position:absolute;z-index:200;display:flex;justify-content:center}
+.home-pawn svg{display:block;filter:drop-shadow(0 6px 6px rgba(0,0,0,.32))}
 
 /* 리뷰 문구 조립기 */
 .rv-pills{display:flex;flex-wrap:wrap;gap:6px}
@@ -2467,6 +2470,29 @@ function _penguinSvg(size){
     <path d="M32 31.5l-5 4.2 5 3.6 5-3.6z" fill="#FF9C2E"/>
   </svg>`;
 }
+// 홈·대기화면에 넣을 실제 보드 축소판 (본판과 동일한 기하·키캡·상품 라벨)
+function _diceMiniBoard(startPos,count,scale){
+  const cfg=STORE.diceGame;
+  if(!cfg)return '';
+  if(!cfg.tiles||cfg.tiles.length!==cfg.boardSize)cfg.tiles=_diceBuildTiles(cfg.prizes,cfg.boardSize);
+  const n=cfg.tiles.length,TOP_PAD=20;
+  const pts=[];let maxY=0;
+  for(let i=0;i<count;i++){
+    const k=startPos+i,p=_diceTileXY(k,startPos),up=-p.y;
+    pts.push({k,i,x:p.x,up});
+    if(up>maxY)maxY=up;
+  }
+  let inner='';
+  pts.forEach(pt=>{
+    const prize=cfg.prizes.find(pz=>pz.id===cfg.tiles[((pt.k%n)+n)%n])||{};
+    inner+=`<div class="dtile dt-${prize.type||'coupon'}" style="left:${pt.x}px;top:${maxY-pt.up+TOP_PAD}px;z-index:${120-pt.i}">`+
+      `<div class="dtile-cap"></div><div class="dtile-content"><span class="dt-ic">${prize.icon||'🎁'}</span></div>`+
+      `<span class="dt-badge${prize.type==='stamp'?' plain':''}">${_diceShortLabel(prize)}</span></div>`;
+  });
+  inner+=`<div class="home-pawn" style="left:${pts[0].x+13}px;top:${maxY+TOP_PAD-16}px">${_penguinSvg(42)}</div>`;
+  const h=Math.round((maxY+66+TOP_PAD)*scale);
+  return `<div class="dice-mini" style="height:${h}px"><div class="dice-mini-inner" style="transform:scale(${scale})">${inner}</div></div>`;
+}
 // 무한 트랙 기하 — 절대 인덱스 k에 대해 4칸마다 방향이 꺾이며 계속 위로 올라감
 const _DT_SEG=4,_DT_X=47,_DT_Y=26,_DT_TURN=22;
 // 방향이 꺾이는 칸(ㄱ자 구간)은 같은 열에 겹쳐 서므로 그 지점에서만 더 높이 올려 계단처럼 보이게 한다
@@ -2546,31 +2572,35 @@ function renderDiceBoard(){
   else{btn.textContent='🎲 주사위 받으러 가기';btn.onclick=openDiceMissions;}
 }
 // 홈 화면 히어로 카드를 주사위 보드 미리보기로 교체 — 들어가기 전에 "해볼 만하다"는 걸 바로 보여줌
+// 히어로 카드는 주사위 모드에서 통째로 교체되므로 원본을 보관해 두고 필요 시 되돌린다
+let _heroCardOriginal=null,_heroCardOrigStyle=null;
+function restoreHomeHero(){
+  const hero=document.getElementById('home-hero-card');
+  if(!hero||_heroCardOriginal===null)return;
+  hero.innerHTML=_heroCardOriginal;
+  hero.style.cssText=_heroCardOrigStyle;
+  _heroCardOriginal=null;
+}
 function renderDiceHomePreview(heroCard){
   const cfg=STORE.diceGame;
-  if(!cfg)return;
+  if(!heroCard||!cfg)return;
+  if(_heroCardOriginal===null){_heroCardOriginal=heroCard.innerHTML;_heroCardOrigStyle=heroCard.style.cssText;}
   if(!cfg.tiles||cfg.tiles.length!==cfg.boardSize)cfg.tiles=_diceBuildTiles(cfg.prizes,cfg.boardSize);
-  heroCard.style.background='linear-gradient(160deg,#FFD98A 0%,#FFB258 55%,#FF8A3D 100%)';
-  // 실제 보드와 같은 계단 기하로 미니 미리보기 (펭귄 포함)
-  const n=cfg.tiles.length;
-  const startK=currentUser?getMyDiceState().pos:0;
-  const SX=40,SY=17;
-  let previewTiles='';
-  for(let i=6;i>=0;i--){
-    const prize=cfg.prizes.find(p=>p.id===cfg.tiles[(((startK+i)%n)+n)%n])||{};
-    previewTiles+=`<div class="dtile home-dtile dt-${prize.type||'coupon'}" style="left:${8+i*SX}px;top:${52-i*SY}px;z-index:${60-i}">`+
-      `<div class="dtile-cap"></div><div class="dtile-content"><span class="dt-ic">${prize.icon||'🎁'}</span></div></div>`;
-  }
-  previewTiles+=`<div class="home-pawn" style="left:8px;top:32px">${_penguinSvg(38)}</div>`;
-  const diceCount=currentUser?getMyDiceState().dice:0;
+  heroCard.style.background='linear-gradient(165deg,#FFE0A0 0%,#FFB65E 48%,#FF8B42 100%)';
+  heroCard.style.padding='18px 16px 16px';
+  const st=currentUser?getMyDiceState():null;
+  const startK=st?st.pos:0;
+  const dist=_diceDistTo(cfg.tiles,startK,'jack');
   heroCard.innerHTML=
-    `<div style="display:flex;align-items:center;gap:7px;margin-bottom:8px">`+
-    `<span style="font-size:18px">🎲</span><div style="font-size:12px;color:rgba(255,255,255,.9);font-weight:700;letter-spacing:.5px">주사위 이벤트 · 꽝 없음</div></div>`+
-    `<div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:2px;line-height:1.3;text-shadow:0 2px 8px rgba(0,0,0,.25)">굴리면 무조건 당첨!<br>지금 확인해보세요 🎁</div>`+
-    `<div class="dice-home-strip">${previewTiles}</div>`+
-    `<div style="display:flex;align-items:center;gap:10px">`+
-    `<div style="background:#fff;color:#B5551A;font-size:14px;font-weight:800;padding:10px 20px;border-radius:11px" class="cta-pulse">🎲 굴리러 가기</div>`+
-    `<div style="font-size:12px;color:rgba(255,255,255,.9);font-weight:700">${currentUser?('내 주사위 '+diceCount+'개'):'참여하면 주사위 지급'}</div></div>`;
+    `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">`+
+      `<div style="font-size:12px;color:rgba(255,255,255,.95);font-weight:800">🎲 주사위 이벤트 · 꽝 없음</div>`+
+      `<span style="background:rgba(0,0,0,.3);color:#fff;font-size:12px;font-weight:800;padding:4px 11px;border-radius:20px">🎲 ${st?st.dice:0}</span>`+
+    `</div>`+
+    `<div style="font-size:21px;font-weight:900;color:#fff;line-height:1.28;text-shadow:0 2px 10px rgba(0,0,0,.28)">굴리면 무조건 당첨!<br>지금 확인해보세요 🎁</div>`+
+    (dist!=null?`<div style="font-size:12.5px;color:#fff;font-weight:800;margin-top:4px;text-shadow:0 1px 6px rgba(0,0,0,.3)">🏆 잭팟까지 ${dist}칸 남았어요</div>`:'')+
+    _diceMiniBoard(startK,7,0.78)+
+    `<button class="btn cta-pulse" style="background:#fff;color:#B5551A;font-weight:900;padding:14px;margin-top:2px">`+
+      `${st&&st.dice>0?'🎲 굴리러 가기':'🎲 주사위 받고 시작하기'}</button>`;
 }
 // 주사위를 여러 바퀴 굴린 뒤 지정된 눈에서 감속하며 멈춤 (본판·잭팟 공용)
 function _diceTumble(cubes,wraps,a,b,done){
@@ -2844,8 +2874,8 @@ function openDiceDwell(id){
   document.getElementById('dice-dwell-go').onclick=function(){
     _diceDwellStart=Date.now();_saveDwell();
     document.getElementById('dice-dwell-status').textContent='리뷰를 작성하고 다시 이 화면으로 돌아와주세요 🙏';
-    // 같은 탭에서 이동 — 모바일에서 뒤로가기 한 번이면 게임으로 정확히 복귀한다
-    location.href=url;
+    // 새 탭으로 열어 이 게임 화면을 그대로 남겨둔다 (탭만 닫으면 진행 상태 그대로 복귀)
+    window.open(url,'_blank','noopener');
   };
   document.getElementById('dice-dwell-claim').style.display='none';
   document.getElementById('dice-dwell-overlay').style.display='flex';
@@ -2866,7 +2896,7 @@ function resumeDiceDwell(){
   _diceDwellMissionId=d.id;_diceDwellStart=d.at;
   document.getElementById('dice-dwell-title').textContent=m.label;
   document.getElementById('dice-dwell-go').onclick=function(){
-    _diceDwellStart=Date.now();_saveDwell();location.href=_diceMissionUrl(d.id);
+    _diceDwellStart=Date.now();_saveDwell();window.open(_diceMissionUrl(d.id),'_blank','noopener');
   };
   document.getElementById('dice-dwell-overlay').style.display='flex';
   _diceCheckDwell();
@@ -3110,26 +3140,17 @@ function renderLandingDiceCard(){
   }
   if(startBtn)startBtn.style.display='none'; // 이미 참여 중이면 '이어하기'가 대신한다
   const st=getMyDiceState();
-  const n=cfg.tiles.length;
-  const SX=40,SY=17;
-  let tiles='';
-  for(let i=6;i>=0;i--){
-    const prize=cfg.prizes.find(p=>p.id===cfg.tiles[(((st.pos+i)%n)+n)%n])||{};
-    tiles+=`<div class="dtile home-dtile dt-${prize.type||'coupon'}" style="left:${8+i*SX}px;top:${52-i*SY}px;z-index:${60-i}">`+
-      `<div class="dtile-cap"></div><div class="dtile-content"><span class="dt-ic">${prize.icon||'🎁'}</span></div></div>`;
-  }
-  tiles+=`<div class="home-pawn" style="left:8px;top:32px">${_penguinSvg(38)}</div>`;
   const dist=_diceDistTo(cfg.tiles,st.pos,'jack');
   el.innerHTML=
-    `<div style="background:linear-gradient(160deg,#FFD98A 0%,#FFB258 55%,#FF8A3D 100%);border-radius:20px;padding:18px 18px 16px;margin-bottom:14px">`+
-    `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">`+
-      `<div style="font-size:12px;color:rgba(255,255,255,.92);font-weight:800">🎲 진행 중인 주사위 이벤트</div>`+
-      `<span style="background:rgba(0,0,0,.28);color:#fff;font-size:12px;font-weight:800;padding:4px 11px;border-radius:20px">🎲 ${st.dice}</span>`+
+    `<div style="background:linear-gradient(165deg,#FFE0A0 0%,#FFB65E 48%,#FF8B42 100%);border-radius:20px;padding:18px 16px 16px;margin-bottom:14px">`+
+    `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">`+
+      `<div style="font-size:12px;color:rgba(255,255,255,.95);font-weight:800">🎲 진행 중인 주사위 이벤트</div>`+
+      `<span style="background:rgba(0,0,0,.3);color:#fff;font-size:12px;font-weight:800;padding:4px 11px;border-radius:20px">🎲 ${st.dice}</span>`+
     `</div>`+
-    `<div style="font-size:19px;font-weight:900;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.25)">${currentUser.name}님, 이어서 하세요!</div>`+
-    (dist!=null?`<div style="font-size:12px;color:rgba(255,255,255,.95);font-weight:700;margin-top:2px">🏆 잭팟까지 ${dist}칸 남았어요</div>`:'')+
-    `<div class="dice-home-strip">${tiles}</div>`+
-    `<button class="btn" style="background:#fff;color:#B5551A;font-weight:900;padding:14px" onclick="show('s-dice')">`+
+    `<div style="font-size:20px;font-weight:900;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.28)">${currentUser.name}님, 이어서 하세요!</div>`+
+    (dist!=null?`<div style="font-size:12.5px;color:#fff;font-weight:800;margin-top:3px;text-shadow:0 1px 6px rgba(0,0,0,.3)">🏆 잭팟까지 ${dist}칸 남았어요</div>`:'')+
+    _diceMiniBoard(st.pos,7,0.78)+
+    `<button class="btn cta-pulse" style="background:#fff;color:#B5551A;font-weight:900;padding:14px;margin-top:2px" onclick="show('s-dice')">`+
       `${st.dice>0?'🎲 게임하러 가기':'🎲 주사위 받으러 가기'}</button>`+
     `</div>`;
 }
@@ -3738,7 +3759,9 @@ function refreshHome(){
     document.getElementById('home-coupon-badge').textContent='';
     document.getElementById('home-coupon-sub').textContent='로그인 후 확인';
     document.getElementById('home-stamp-sub').textContent='로그인 후 확인';
-    document.getElementById('home-spin-left').textContent='하루 1회 무료';
+    // 주사위 모드에서는 히어로 카드가 통째로 교체돼 이 요소가 없을 수 있다
+    const _sl0=document.getElementById('home-spin-left');
+    if(_sl0)_sl0.textContent='하루 1회 무료';
     const rankBarEl=document.getElementById('home-rank-bar');
     if(rankBarEl)rankBarEl.innerHTML='<div style="text-align:center;padding:6px 0"><button onclick="show(\'s-login\')" class="cta-pulse" style="background:var(--blue);color:#fff;border:none;border-radius:10px;padding:8px 22px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">📱 번호 등록하고 스탬프·쿠폰 받기</button></div>';
     const surveyEl=document.getElementById('home-survey-sub');
@@ -3753,9 +3776,10 @@ function refreshHome(){
         return `<div${idx>0?' style="border-top:1px solid var(--border2)"':''}><div class="list-item" style="opacity:${ev.active?1:.4};cursor:${ev.active?'pointer':'default'};padding:10px 14px" onclick="${ev.active?`show('s-login')`:''}"><div class="li-icon" style="background:${meta.bg};display:flex;align-items:center;justify-content:center;overflow:hidden;padding:0;width:40px;height:40px;border-radius:12px">${meta.icon}</div><div class="li-body"><div class="li-title" style="font-size:14px">${meta.label}</div><div class="li-sub" style="color:var(--t3)">${ev.active?'리뷰 작성 후 게임 참여':'현재 비활성화됨'}</div></div><span style="font-size:18px;color:var(--t4)">›</span></div></div>`;
       }).join('');}
     }
-    if(gm==='dice')renderDiceHomePreview(document.getElementById('home-hero-card'));
+    if(gm==='dice')renderDiceHomePreview(document.getElementById('home-hero-card'));else restoreHomeHero();
     return;
   }
+
 
   const uVisits=currentUser.visits||0;
   const rank=getRank(uVisits);
@@ -3771,7 +3795,8 @@ function refreshHome(){
   const _nextMs=_mss.find(m=>m.goal>_cur)||_mss[_mss.length-1];
   document.getElementById('home-stamp-sub').textContent=_cur+' / '+_nextMs.goal+'개 적립';
   const last=localStorage.getItem('lastSpin_'+STORE_ID);
-  document.getElementById('home-spin-left').textContent=last===today()?'오늘 이미 참여됨':'하루 1회';
+  const _sl=document.getElementById('home-spin-left');
+  if(_sl)_sl.textContent=last===today()?'오늘 이미 참여됨':'하루 1회';
   // 설문 스탬프 적립 여부 표시
   const _surveyEl=document.getElementById('home-survey-sub');
   if(_surveyEl){
@@ -3815,7 +3840,7 @@ function refreshHome(){
       rankBarEl.innerHTML=`<div style="text-align:center;font-size:13px;font-weight:700;color:#8b5cf6;padding:4px 0">${rank.emoji} 최고 등급 달성! 감사합니다 💜</div>`;
     }
   }
-  if(gm==='dice')renderDiceHomePreview(document.getElementById('home-hero-card'));
+  if(gm==='dice')renderDiceHomePreview(document.getElementById('home-hero-card'));else restoreHomeHero();
 }
 
 /* ════════════════════ 효과음 (MP3) ════════════════════ */
