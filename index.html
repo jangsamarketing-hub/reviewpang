@@ -1724,10 +1724,15 @@ body.dark .dice-jackpot-banner{background:linear-gradient(160deg,#4A3A18,#3A2C10
 
 <!-- ══════════ 🎲 주사위 당첨 결과 ══════════ -->
 <div id="dice-reveal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center;padding:16px">
-  <div class="dice-reveal-box" id="dice-reveal-box"></div>
-  <div style="position:fixed;bottom:24px;left:16px;right:16px;max-width:320px;margin:0 auto">
-    <button class="btn btn-blue" id="dice-reveal-confirm-btn" onclick="closeDiceReveal()">확인</button>
+  <div class="dice-reveal-box">
+    <div id="dice-reveal-box"></div>
+    <button class="btn btn-blue" id="dice-reveal-confirm-btn" style="margin-top:18px" onclick="closeDiceReveal()">확인</button>
   </div>
+</div>
+
+<!-- ══════════ 🏆 잭팟 2차 추첨 ══════════ -->
+<div id="dice-jackpot-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:10000;align-items:center;justify-content:center;padding:16px">
+  <div class="dice-reveal-box" id="dice-jackpot-box"></div>
 </div>
 
 <!-- ══════════ 🎲 주사위 충전 미션 ══════════ -->
@@ -1768,7 +1773,9 @@ body.dark .dice-jackpot-banner{background:linear-gradient(160deg,#4A3A18,#3A2C10
 <div id="dice-dwell-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center;padding:16px">
   <div style="background:var(--white);border-radius:22px;width:100%;max-width:320px;padding:28px 24px;text-align:center">
     <div id="dice-dwell-title" style="font-size:18px;font-weight:900;color:var(--t1)"></div>
-    <div id="dice-dwell-status" style="font-size:13px;color:var(--t3);margin:12px 0 18px;line-height:1.6"></div>
+    <div id="dice-dwell-status" style="font-size:13px;color:var(--t3);margin:12px 0 14px;line-height:1.6"></div>
+    <div style="background:var(--blue-light);border-radius:12px;padding:11px 13px;font-size:12px;color:var(--t2);line-height:1.65;text-align:left;margin-bottom:16px">
+      📸 <b>리뷰 작성 후 스크린샷을 찍어</b> 직원에게 보여주시면<br>상품을 바로 받으실 수 있어요!</div>
     <button id="dice-dwell-go" class="btn" style="background:#03C75A;color:#fff;font-weight:800">리뷰 쓰러 가기 →</button>
     <button id="dice-dwell-claim" class="btn btn-blue" style="display:none;margin-top:8px" onclick="claimDiceDwell()">🎲 주사위 받기</button>
     <button class="btn btn-ghost" style="margin-top:8px" onclick="closeDiceDwell()">닫기</button>
@@ -2225,6 +2232,14 @@ function migrateStore(s){
   if(s.gameMode==='card')s.gameMode='roulette';
   // 🎲 주사위 게임: 매장별로 독립된 상품·확률·고객 진행상태 (Supabase에 저장됨, 로컬 전용 아님)
   if(!s.diceGame)s.diceGame=_diceDefaultGame();
+  // v2: 상품 구성·확률 개편(스탬프 1~3으로 축소, 음료·주류 비중 확대, 잭팟 상향) + 체류 기준 75초
+  if((s.diceGame.v||0)<2){
+    const _d=_diceDefaultGame();
+    s.diceGame.prizes=_d.prizes;
+    s.diceGame.verifySeconds=_d.verifySeconds;
+    s.diceGame.v=2;
+    s.diceGame.tiles=null;
+  }
   if(!s.diceGame.tiles||s.diceGame.tiles.length!==(s.diceGame.boardSize||20))s.diceGame.tiles=_diceBuildTiles(s.diceGame.prizes,s.diceGame.boardSize||20);
   if(!s.diceState)s.diceState={};
   return s;
@@ -2243,29 +2258,30 @@ function saveState(){if(STORE){STORE._sbTs=Date.now();storesDB[STORE_ID]=STORE;s
    보드 위 위치와 무관하게 매 회 설정한 확률 그대로 추첨된다. */
 function _diceDefaultGame(){
   return {
+    v:2,
     enabled:false,
     boardSize:20,
     firstRollFree:true,
     nearMissGap:3,
-    verifySeconds:60,
+    // 체류 검증 기준(초). 고객에게 절대 노출하지 않는다 — 알려지면 시간만 때우는 우회가 생긴다
+    verifySeconds:75,
     maxAgainPerDay:2,
     prizes:[
-      {id:'st1',label:'스탬프 +1',icon:'⭐',type:'stamp',amount:1,weight:32,cost:0},
-      {id:'st2',label:'스탬프 +2',icon:'⭐',type:'stamp',amount:2,weight:16,cost:0},
-      {id:'dr1',label:'음료 1잔',icon:'🥤',type:'coupon',weight:14,cost:800,benefit:'음료 1잔 무료'},
-      {id:'st3',label:'스탬프 +3',icon:'⭐',type:'stamp',amount:3,weight:10,cost:0},
+      {id:'dr1',label:'음료 1잔',icon:'🥤',type:'coupon',weight:22,cost:800,benefit:'음료 1잔 무료'},
+      {id:'lq1',label:'주류 1병',icon:'🍺',type:'coupon',weight:18,cost:1300,benefit:'주류 1병 무료'},
+      {id:'st1',label:'스탬프 +1',icon:'⭐',type:'stamp',amount:1,weight:16,cost:0},
+      {id:'sd1',label:'지정 사이드',icon:'🍟',type:'coupon',weight:13,cost:2000,benefit:'지정 사이드 메뉴 무료'},
       {id:'again',label:'한 번 더!',icon:'🎲',type:'again',weight:8,cost:0},
-      {id:'lq1',label:'주류 1병',icon:'🍺',type:'coupon',weight:7,cost:1300,benefit:'주류 1병 무료'},
-      {id:'sd1',label:'지정 사이드',icon:'🍟',type:'coupon',weight:5,cost:2000,benefit:'지정 사이드 메뉴 무료'},
-      {id:'st5',label:'스탬프 +5',icon:'⭐',type:'stamp',amount:5,weight:4,cost:0},
-      {id:'sd2',label:'희망 사이드',icon:'🍤',type:'coupon',weight:3,cost:3000,benefit:'희망 사이드 메뉴 무료'},
-      {id:'jack',label:'잭팟',icon:'🏆',type:'jackpot',weight:1,minSlots:2,sub:[
-        {label:'지정 메인메뉴 1개',weight:50,cost:5000,benefit:'지정 메인메뉴 1개 무료',staffCheck:true},
+      {id:'st2',label:'스탬프 +2',icon:'⭐',type:'stamp',amount:2,weight:7,cost:0},
+      {id:'sd2',label:'희망 사이드',icon:'🍤',type:'coupon',weight:7,cost:3000,benefit:'희망 사이드 메뉴 무료'},
+      {id:'jack',label:'잭팟',icon:'🏆',type:'jackpot',weight:5,minSlots:2,sub:[
+        {label:'지정 메인메뉴 1개',weight:55,cost:5000,benefit:'지정 메인메뉴 1개 무료',staffCheck:true},
         {label:'희망 메인메뉴 1개',weight:30,cost:7000,benefit:'희망 메인메뉴 1개 무료',staffCheck:true},
-        {label:'3만원 식사권',weight:15,cost:10000,benefit:'3만원 상당 식사권',staffCheck:true},
-        {label:'5만원 식사권',weight:4,cost:17000,benefit:'5만원 상당 식사권',staffCheck:true},
+        {label:'3만원 식사권',weight:11,cost:10000,benefit:'3만원 상당 식사권',staffCheck:true},
+        {label:'5만원 식사권',weight:3,cost:17000,benefit:'5만원 상당 식사권',staffCheck:true},
         {label:'10만원 식사권',weight:1,cost:33000,benefit:'10만원 상당 식사권',staffCheck:true}
-      ]}
+      ]},
+      {id:'st3',label:'스탬프 +3',icon:'⭐',type:'stamp',amount:3,weight:4,cost:0}
     ],
     reviewParts:{
       intro:['친구 추천으로 방문했는데','지나가다 들렀는데','예전부터 가보고 싶었던 곳이라','우연히 알게 돼서 왔는데'],
@@ -2452,11 +2468,13 @@ function _penguinSvg(size){
   </svg>`;
 }
 // 무한 트랙 기하 — 절대 인덱스 k에 대해 4칸마다 방향이 꺾이며 계속 위로 올라감
-const _DT_SEG=4,_DT_X=47,_DT_Y=26;
+const _DT_SEG=4,_DT_X=47,_DT_Y=26,_DT_TURN=22;
+// 방향이 꺾이는 칸(ㄱ자 구간)은 같은 열에 겹쳐 서므로 그 지점에서만 더 높이 올려 계단처럼 보이게 한다
+function _diceRawY(k){return k*_DT_Y+Math.floor(k/_DT_SEG)*_DT_TURN;}
 function _diceTileXY(k,base){
   const seg=Math.floor(k/_DT_SEG),within=((k%_DT_SEG)+_DT_SEG)%_DT_SEG;
   const col=seg%2===0?within:(_DT_SEG-1-within);
-  return{x:col*_DT_X,y:-(k-base)*_DT_Y};
+  return{x:col*_DT_X,y:-(_diceRawY(k)-_diceRawY(base))};
 }
 // 칸 인덱스를 perRow개씩 묶어 계단식 보드의 각 행으로 나눔 (0번 칸이 맨 아래 행)
 function _diceRows(n,perRow){
@@ -2554,6 +2572,23 @@ function renderDiceHomePreview(heroCard){
     `<div style="background:#fff;color:#B5551A;font-size:14px;font-weight:800;padding:10px 20px;border-radius:11px" class="cta-pulse">🎲 굴리러 가기</div>`+
     `<div style="font-size:12px;color:rgba(255,255,255,.9);font-weight:700">${currentUser?('내 주사위 '+diceCount+'개'):'참여하면 주사위 지급'}</div></div>`;
 }
+// 주사위를 여러 바퀴 굴린 뒤 지정된 눈에서 감속하며 멈춤 (본판·잭팟 공용)
+function _diceTumble(cubes,wraps,a,b,done){
+  [a,b].forEach((val,i)=>{
+    const cube=cubes[i],wrap=wraps[i];
+    if(!cube)return;
+    const rot=_D3_ROT[val]||[0,0];
+    cube.style.transition='none';
+    cube.style.transform='rotateX(0deg) rotateY(0deg)';
+    if(wrap)wrap.classList.remove('rolling');
+    void cube.offsetWidth;
+    if(wrap)wrap.classList.add('rolling');
+    cube.style.transition='';
+    const spins=3+i; // 두 주사위가 따로 노는 느낌
+    cube.style.transform=`rotateX(${360*spins+rot[0]}deg) rotateY(${360*(spins+1)+rot[1]}deg)`;
+  });
+  setTimeout(done,1550);
+}
 let _diceAnimating=false;
 function startDiceRoll(){
   if(_diceAnimating)return;
@@ -2572,22 +2607,7 @@ function startDiceRoll(){
   const cubes=facesEl.querySelectorAll('.die3d');
   let legIdx=0;
 
-  // 주사위를 여러 바퀴 굴린 뒤 지정된 눈에서 감속하며 멈춤
-  function tumble(a,b,done){
-    [a,b].forEach((val,i)=>{
-      const cube=cubes[i],wrap=wraps[i];
-      const [rx,ry]=_D3_ROT[val];
-      cube.style.transition='none';
-      cube.style.transform='rotateX(0deg) rotateY(0deg)';
-      wrap.classList.remove('rolling');
-      void cube.offsetWidth;
-      wrap.classList.add('rolling');
-      cube.style.transition='';
-      const spins=3+i; // 두 주사위가 따로 노는 느낌
-      cube.style.transform=`rotateX(${360*spins+rx}deg) rotateY(${360*(spins+1)+ry}deg)`;
-    });
-    setTimeout(done,1550);
-  }
+  function tumble(a,b,done){_diceTumble(cubes,wraps,a,b,done);}
 
   function playLeg(){
     const leg=result.route.legs[legIdx];
@@ -2618,12 +2638,34 @@ function startDiceRoll(){
   }
   playLeg();
 }
+// 🏆 잭팟 칸에서는 주사위를 한 번 더 굴려 최종 상품을 정한다 (결과는 이미 확정, 연출만)
+function showJackpotRoll(sub,done){
+  const ov=document.getElementById('dice-jackpot-overlay');
+  const box=document.getElementById('dice-jackpot-box');
+  box.innerHTML=`<div style="font-size:17px;font-weight:900;color:var(--t1)">🏆 잭팟 칸 도착!</div>`+
+    `<div style="font-size:12.5px;color:var(--t3);margin-top:5px">주사위를 한 번 더 굴려<br>상품을 정해드릴게요</div>`+
+    `<div class="dice-tray" style="display:flex">${_die3dHtml()}${_die3dHtml()}</div>`;
+  ov.style.display='flex';
+  const cubes=box.querySelectorAll('.die3d'),wraps=box.querySelectorAll('.die-wrap');
+  const r=()=>1+Math.floor(Math.random()*6);
+  _diceTumble(cubes,wraps,r(),r(),function(){
+    box.innerHTML=`<div class="drv-ic">🏆</div><div class="drv-name">${sub.label}</div>`+
+      `<div class="drv-sub">축하합니다! 직원에게 이 화면을 보여주세요 🎊</div>`+
+      `<button class="btn btn-blue" style="margin-top:18px" id="jp-confirm">확인</button>`;
+    document.getElementById('jp-confirm').onclick=function(){ov.style.display='none';done();};
+  });
+}
 function showDiceReveal(result){
+  const {prize,grant}=result;
+  if(grant.kind==='jackpot'){showJackpotRoll(grant.sub,function(){_showDiceRevealBox(result);});return;}
+  _showDiceRevealBox(result);
+}
+function _showDiceRevealBox(result){
   const {prize,grant}=result;
   let icon=prize.icon||'🎁',name=prize.label||'',sub='쿠폰함에 자동으로 담겼어요';
   if(grant.kind==='stamp')sub='스탬프 카드에 자동 적립됐어요 ⭐';
   else if(grant.kind==='again')sub='주사위 1개를 더 받았어요! 계속 굴려보세요';
-  else if(grant.kind==='jackpot'){icon='🏆';name=grant.sub.label;sub='상위 1%의 행운! 직원에게 이 화면을 보여주세요 🎊';}
+  else if(grant.kind==='jackpot'){icon='🏆';name=grant.sub.label;sub='쿠폰함에 담겼어요! 직원 확인 후 받으실 수 있어요';}
   document.getElementById('dice-reveal-box').innerHTML=
     `<div class="drv-ic">${icon}</div><div class="drv-name">${name}</div><div class="drv-sub">${sub}</div>`;
   document.getElementById('dice-reveal-overlay').style.display='flex';
@@ -2802,7 +2844,8 @@ function openDiceDwell(id){
   document.getElementById('dice-dwell-go').onclick=function(){
     _diceDwellStart=Date.now();_saveDwell();
     document.getElementById('dice-dwell-status').textContent='리뷰를 작성하고 다시 이 화면으로 돌아와주세요 🙏';
-    window.open(url,'_blank');
+    // 같은 탭에서 이동 — 모바일에서 뒤로가기 한 번이면 게임으로 정확히 복귀한다
+    location.href=url;
   };
   document.getElementById('dice-dwell-claim').style.display='none';
   document.getElementById('dice-dwell-overlay').style.display='flex';
@@ -2823,7 +2866,7 @@ function resumeDiceDwell(){
   _diceDwellMissionId=d.id;_diceDwellStart=d.at;
   document.getElementById('dice-dwell-title').textContent=m.label;
   document.getElementById('dice-dwell-go').onclick=function(){
-    _diceDwellStart=Date.now();_saveDwell();window.open(_diceMissionUrl(d.id),'_blank');
+    _diceDwellStart=Date.now();_saveDwell();location.href=_diceMissionUrl(d.id);
   };
   document.getElementById('dice-dwell-overlay').style.display='flex';
   _diceCheckDwell();
@@ -2845,16 +2888,22 @@ function _diceCheckDwell(){
   const statusEl=document.getElementById('dice-dwell-status');
   const claimBtn=document.getElementById('dice-dwell-claim');
   if(!statusEl||!claimBtn)return;
+  // 남은 시간은 절대 노출하지 않는다 (기준이 알려지면 시간만 때우는 우회가 생김)
   if(elapsed>=need){
     statusEl.textContent='확인됐어요! 주사위를 받아보세요 🎲';
     claimBtn.style.display='block';
   }else{
-    statusEl.textContent='아직 리뷰를 다 안 쓰신 것 같아요 (약 '+(need-elapsed)+'초 더 필요해요)';
+    statusEl.textContent='아직 리뷰가 확인되지 않았어요.\n작성을 마치고 다시 돌아와 주세요 🙏';
+    statusEl.style.whiteSpace='pre-line';
     claimBtn.style.display='none';
   }
 }
 document.addEventListener('visibilitychange',function(){
   if(document.visibilityState==='visible')_diceCheckDwell();
+});
+// 뒤로가기로 돌아온 경우(bfcache 복원)에도 즉시 확인 — 모바일 복귀 경로의 대부분이 여기다
+window.addEventListener('pageshow',function(e){
+  if(e.persisted)setTimeout(function(){if(!_diceDwellMissionId)resumeDiceDwell();else _diceCheckDwell();},120);
 });
 
 /* ════════════════════ 네이버 UID 추출 ════════════════════ */
