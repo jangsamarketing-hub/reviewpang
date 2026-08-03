@@ -1125,7 +1125,8 @@ body.dark .dice-jackpot-banner{background:linear-gradient(160deg,#4A3A18,#3A2C10
     </div>
   </div>
   <div class="scroll" style="background:var(--bg);padding:28px 20px">
-    <button class="btn btn-blue" style="font-size:17px;padding:18px" onclick="show('s-login')">🎁 리뷰이벤트 게임 시작</button>
+    <div id="landing-dice-card"></div>
+    <button class="btn btn-blue" id="landing-start-btn" style="font-size:17px;padding:18px" onclick="show('s-login')">🎁 리뷰이벤트 게임 시작</button>
     <button class="btn btn-ghost" style="margin-top:12px" onclick="show('s-owner-signup')">🏪 사장님 회원가입</button>
     <div style="margin-top:28px;display:flex;justify-content:center">
       <button onclick="show('s-admin-login')" style="background:none;border:none;font-size:12px;color:var(--t4);cursor:pointer;padding:6px 12px;text-decoration:underline">사장님이신가요?</button>
@@ -2509,7 +2510,8 @@ function renderDiceBoard(){
   const track=document.getElementById('dice-board-grid');
   _diceBase=state.pos-4;
   let html='';
-  for(let k=_diceBase;k<=state.pos+16;k++){
+  // 더블(2연속 굴림)은 최대 21칸까지 이동하므로 그보다 넉넉히 앞쪽을 미리 그려둔다
+  for(let k=_diceBase;k<=state.pos+30;k++){
     const prize=cfg.prizes.find(p=>p.id===cfg.tiles[((k%n)+n)%n])||{};
     const {x,y}=_diceTileXY(k,_diceBase);
     html+=_diceTileHtml(k,prize,false,`left:${x}px;top:${y}px;z-index:${500-(k-_diceBase)}`);
@@ -2657,6 +2659,7 @@ function _diceMarkMissionDone(id,bonus){
   const state=getMyDiceState();
   if(!state.missionsDone)state.missionsDone=[];
   state.missionsDone.push(id+'_'+today());
+  try{localStorage.removeItem(_dwellKey());}catch(e){}
   const mission=(STORE.diceGame.missions||[]).find(m=>m.id===id);
   state.dice+=(mission&&mission.dice||1)+(bonus||0);
   saveState();
@@ -2781,6 +2784,14 @@ function openDiceReviewBuilder(id){
 }
 
 let _diceDwellMissionId=null,_diceDwellStart=0;
+// 외부 앱으로 나간 사이 페이지가 날아가도 체류 측정이 이어지도록 localStorage에 보관
+function _dwellKey(){return 'rp_dwell_'+STORE_ID;}
+function _saveDwell(){
+  try{
+    if(_diceDwellMissionId&&_diceDwellStart)localStorage.setItem(_dwellKey(),JSON.stringify({id:_diceDwellMissionId,at:_diceDwellStart}));
+    else localStorage.removeItem(_dwellKey());
+  }catch(e){}
+}
 function openDiceDwell(id){
   const m=(STORE.diceGame.missions||[]).find(x=>x.id===id);
   const url=_diceMissionUrl(id);
@@ -2789,27 +2800,44 @@ function openDiceDwell(id){
   document.getElementById('dice-dwell-title').textContent=m.label;
   document.getElementById('dice-dwell-status').textContent='버튼을 눌러 리뷰를 남기고 돌아와주세요';
   document.getElementById('dice-dwell-go').onclick=function(){
-    window.open(url,'_blank');
-    _diceDwellStart=Date.now();
+    _diceDwellStart=Date.now();_saveDwell();
     document.getElementById('dice-dwell-status').textContent='리뷰를 작성하고 다시 이 화면으로 돌아와주세요 🙏';
+    window.open(url,'_blank');
   };
   document.getElementById('dice-dwell-claim').style.display='none';
   document.getElementById('dice-dwell-overlay').style.display='flex';
 }
 function closeDiceDwell(){
   document.getElementById('dice-dwell-overlay').style.display='none';
-  _diceDwellMissionId=null;_diceDwellStart=0;
+  _diceDwellMissionId=null;_diceDwellStart=0;_saveDwell();
+}
+// 페이지가 다시 로드됐을 때 진행 중이던 리뷰 미션을 복구
+function resumeDiceDwell(){
+  let d=null;
+  try{d=JSON.parse(localStorage.getItem(_dwellKey()));}catch(e){}
+  if(!d||!d.id||!d.at)return;
+  if(Date.now()-d.at>3600000){try{localStorage.removeItem(_dwellKey());}catch(e){}return;}
+  if(_diceMissionDoneToday(d.id)){try{localStorage.removeItem(_dwellKey());}catch(e){}return;}
+  const m=(STORE.diceGame.missions||[]).find(x=>x.id===d.id);
+  if(!m)return;
+  _diceDwellMissionId=d.id;_diceDwellStart=d.at;
+  document.getElementById('dice-dwell-title').textContent=m.label;
+  document.getElementById('dice-dwell-go').onclick=function(){
+    _diceDwellStart=Date.now();_saveDwell();window.open(_diceMissionUrl(d.id),'_blank');
+  };
+  document.getElementById('dice-dwell-overlay').style.display='flex';
+  _diceCheckDwell();
 }
 function claimDiceDwell(){
   if(!_diceDwellMissionId)return;
   _diceMarkMissionDone(_diceDwellMissionId,0);
   closeDiceDwell();
   toast('🎲 주사위 1개 획득!');
-  const dsc=document.getElementById('s-dice');
-  if(dsc&&dsc.classList.contains('on'))renderDiceBoard();
+  if(window.currentScreenId!=='s-dice')show('s-dice');
+  else renderDiceBoard();
 }
-document.addEventListener('visibilitychange',function(){
-  if(document.visibilityState!=='visible'||!_diceDwellMissionId||!_diceDwellStart)return;
+function _diceCheckDwell(){
+  if(!_diceDwellMissionId||!_diceDwellStart)return;
   const cfg=STORE&&STORE.diceGame;
   if(!cfg)return;
   const need=cfg.verifySeconds||60;
@@ -2824,6 +2852,9 @@ document.addEventListener('visibilitychange',function(){
     statusEl.textContent='아직 리뷰를 다 안 쓰신 것 같아요 (약 '+(need-elapsed)+'초 더 필요해요)';
     claimBtn.style.display='none';
   }
+}
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='visible')_diceCheckDwell();
 });
 
 /* ════════════════════ 네이버 UID 추출 ════════════════════ */
@@ -2991,7 +3022,7 @@ function show(id){
     else errEl.innerHTML='';
     renderLoginPrizes();
   }
-  if(id==='s-landing')renderLanding();
+  if(id==='s-landing'){renderLanding();renderLandingDiceCard();}
   if(id==='s-admin-login'){const _sid=localStorage.getItem('admin_saved_id');if(_sid)setTimeout(()=>{const _el=document.getElementById('a-email');if(_el&&!_el.value)_el.value=_sid;},30);}
   if(id==='s-home')refreshHome();
   if(id==='s-roulette')setTimeout(initWheel,60);
@@ -3008,14 +3039,54 @@ function show(id){
     _sbSync(STORE_ID).then(updated=>{if(updated)renderAdmin('stats');}); // 원격이 더 최신이면 재렌더
   }
   if(id==='s-notfound')renderStoreSearchSection();
+  if(currentUser&&id!=='s-login'&&id!=='s-landing')saveSession();
   if(id==='s-platform')renderPlatform();
   if(id==='s-staff-check')renderStaffLog();
   const navMap={'s-home':'home','s-coupons':'coupons','s-stamp':'stamp','s-myinfo':'myinfo'};
   document.querySelectorAll('.bni').forEach(b=>b.classList.toggle('on',b.dataset.nav===navMap[id]));
   window.scrollTo(0,0);
 }
+// 대기(랜딩) 화면에도 현재 게임 상태를 노출 — 진행 위치·남은 주사위·바로 이어하기
+function renderLandingDiceCard(){
+  const el=document.getElementById('landing-dice-card');
+  if(!el)return;
+  const cfg=STORE&&STORE.diceGame;
+  if(!cfg||(STORE.gameMode||'roulette')!=='dice'){el.innerHTML='';return;}
+  if(!cfg.tiles||cfg.tiles.length!==cfg.boardSize)cfg.tiles=_diceBuildTiles(cfg.prizes,cfg.boardSize);
+  const startBtn=document.getElementById('landing-start-btn');
+  if(!currentUser){
+    if(startBtn)startBtn.style.display='';
+    el.innerHTML='';
+    return;
+  }
+  if(startBtn)startBtn.style.display='none'; // 이미 참여 중이면 '이어하기'가 대신한다
+  const st=getMyDiceState();
+  const n=cfg.tiles.length;
+  const SX=40,SY=17;
+  let tiles='';
+  for(let i=6;i>=0;i--){
+    const prize=cfg.prizes.find(p=>p.id===cfg.tiles[(((st.pos+i)%n)+n)%n])||{};
+    tiles+=`<div class="dtile home-dtile dt-${prize.type||'coupon'}" style="left:${8+i*SX}px;top:${52-i*SY}px;z-index:${60-i}">`+
+      `<div class="dtile-cap"></div><div class="dtile-content"><span class="dt-ic">${prize.icon||'🎁'}</span></div></div>`;
+  }
+  tiles+=`<div class="home-pawn" style="left:8px;top:32px">${_penguinSvg(38)}</div>`;
+  const dist=_diceDistTo(cfg.tiles,st.pos,'jack');
+  el.innerHTML=
+    `<div style="background:linear-gradient(160deg,#FFD98A 0%,#FFB258 55%,#FF8A3D 100%);border-radius:20px;padding:18px 18px 16px;margin-bottom:14px">`+
+    `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">`+
+      `<div style="font-size:12px;color:rgba(255,255,255,.92);font-weight:800">🎲 진행 중인 주사위 이벤트</div>`+
+      `<span style="background:rgba(0,0,0,.28);color:#fff;font-size:12px;font-weight:800;padding:4px 11px;border-radius:20px">🎲 ${st.dice}</span>`+
+    `</div>`+
+    `<div style="font-size:19px;font-weight:900;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.25)">${currentUser.name}님, 이어서 하세요!</div>`+
+    (dist!=null?`<div style="font-size:12px;color:rgba(255,255,255,.95);font-weight:700;margin-top:2px">🏆 잭팟까지 ${dist}칸 남았어요</div>`:'')+
+    `<div class="dice-home-strip">${tiles}</div>`+
+    `<button class="btn" style="background:#fff;color:#B5551A;font-weight:900;padding:14px" onclick="show('s-dice')">`+
+      `${st.dice>0?'🎲 게임하러 가기':'🎲 주사위 받으러 가기'}</button>`+
+    `</div>`;
+}
 function renderLanding(){
   if(!STORE)return;
+  renderLandingDiceCard();
   document.title=STORE.profile.name+' | 리뷰 이벤트';
   document.getElementById('landing-emoji').textContent=STORE.profile.emoji||'🍽️';
   document.getElementById('landing-name').textContent=STORE.profile.name;
@@ -3073,8 +3144,28 @@ function phoneLogin(){
   currentUser=user;
   try{saveState();}catch(err){/* iOS 시크릿모드 등 localStorage 실패 시에도 진행 */}
   show('s-home');
+  saveSession();
 }
 function requireLogin(target){if(!currentUser)return show('s-login');show(target);}
+/* ── 로그인 세션 유지 ──
+   리뷰 쓰러 외부 앱으로 나갔다 오면 브라우저가 페이지를 날려 currentUser가 사라진다.
+   그러면 진행 위치·주사위까지 초기화된 것처럼 보이므로 로그인 상태와 화면을 복구한다. */
+function _sessKey(){return 'rp_sess_'+STORE_ID;}
+function saveSession(){
+  if(!currentUser)return;
+  try{localStorage.setItem(_sessKey(),JSON.stringify({uid:currentUser.id,scr:window.currentScreenId,ts:Date.now()}));}catch(e){}
+}
+function clearSession(){try{localStorage.removeItem(_sessKey());}catch(e){}}
+function restoreSession(){
+  let s=null;
+  try{s=JSON.parse(localStorage.getItem(_sessKey()));}catch(e){}
+  if(!s||!s.uid)return null;
+  if(Date.now()-(s.ts||0)>12*3600000){clearSession();return null;} // 12시간 지나면 만료
+  const user=(STORE.users||[]).find(u=>u.id===s.uid);
+  if(!user){clearSession();return null;}
+  currentUser=user;
+  return s.scr||'s-home';
+}
 function closeVipModal(){const m=document.getElementById('vip-modal');if(m)m.style.display='none';}
 function openVipModal(){
   const m=document.getElementById('vip-modal');if(!m)return;
@@ -3126,7 +3217,7 @@ function openVipModal(){
   document.getElementById('vip-modal-body').innerHTML=html;
   m.style.display='flex';
 }
-function logout(){currentUser=null;show('s-landing')}
+function logout(){currentUser=null;clearSession();show('s-landing')}
 function showPrivacyModal(){
   const m=document.getElementById('privacy-modal');
   const sn=document.getElementById('privacy-store-name');
@@ -7104,7 +7195,14 @@ document.getElementById('s-pin').value='';
 (function(){
   const _p=new URLSearchParams(location.search).get('admin');
   const _storeParam=new URLSearchParams(location.search).get('store');
+  // 리뷰 쓰러 나갔다 돌아온 경우: 로그인·화면을 복구해 진행 상황을 잃지 않게 한다
+  const _resume=STORE?restoreSession():null;
   if(_p==='platform'){show('s-platform-login');}
+  else if(STORE&&_resume){
+    show(_resume);
+    setTimeout(resumeDiceDwell,300); // 리뷰 미션 진행 중이었다면 체류 검증 이어서
+    _sbSync(STORE_ID).then(updated=>{if(updated&&window.currentScreenId===_resume)show(_resume);});
+  }
   else if(STORE&&_storeParam){
     renderLanding();show('s-landing');
     // 백그라운드에서 Supabase 최신 데이터 체크 (다른 기기에서 변경된 내용 반영)
