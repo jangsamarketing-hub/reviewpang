@@ -2213,16 +2213,21 @@ function migrateStore(s){
     if(matrixQ){s.surveyQuestions=[matrixQ,...s.surveyQuestions.filter(q=>q.type!=='matrix')];}
   }
   // 구버전 상품 확률 (4개 이하) 이면 5개 기본값으로 교체
+  // v2: 주류 제거, 4등=음료수 · 5등=스탬프 1개 적립(grantsStamp) — 서버 용량과 무관하게 실물 재고 없는 상품 위주로 재편
   const _defPrizes=(pfx)=>[
     {id:pfx+'1',name:'희망 메뉴 1개',prob:3,color:'#FFD700',benefit:'희망 메뉴 1개 무료 (직원 확인 후 제공)'},
     {id:pfx+'2',name:'희망 사이드 1개',prob:20,color:'#C0C0C0',benefit:'희망 사이드 메뉴 1개 무료'},
     {id:pfx+'3',name:'지정 사이드 1개',prob:30,color:'#cd7f32',benefit:'지정 사이드 메뉴 무료'},
-    {id:pfx+'4',name:'주류 1개',prob:22,color:'#9ca3af',benefit:'주류 1개 무료'},
-    {id:pfx+'5',name:'음료수 1개',prob:25,color:'#e5e7eb',benefit:'음료수 1개 무료'}
+    {id:pfx+'4',name:'음료수 1개',prob:25,color:'#3182f6',benefit:'음료수 1개 무료'},
+    {id:pfx+'5',name:'스탬프 1개 적립',prob:22,color:'#8b5cf6',benefit:'스탬프 1개 적립',grantsStamp:1}
   ];
+  // 이미 만들어진 매장에 남아있는 '주류' 상품은 자동으로 새 기본값으로 교체 (사장님이 직접 커스터마이징한 경우는 건드리지 않음)
+  const _hasLiquor=arr=>Array.isArray(arr)&&arr.some(p=>(p.name||'').includes('주류')||(p.benefit||'').includes('주류'));
   const mg=s.mainGame;
   if(mg&&mg.prizes&&mg.prizes.length<5)mg.prizes=_defPrizes('r');
   if(!s.prizes||s.prizes.length<5)s.prizes=_defPrizes('r');
+  if(mg&&_hasLiquor(mg.prizes))mg.prizes=_defPrizes('r');
+  if(_hasLiquor(s.prizes))s.prizes=_defPrizes('r');
   // 이벤트 gameMode + 상품 기본값
   const _evGM={kakao:'ladder',google:'scratch',instagram:'roulette'};
   const _evPfx={kakao:'ek',google:'eg',instagram:'ei'};
@@ -2230,17 +2235,20 @@ function migrateStore(s){
     if(!ev.gameMode&&_evGM[ev.platform])ev.gameMode=_evGM[ev.platform];
     if(ev.gameMode==='card')ev.gameMode=_evGM[ev.platform]||'ladder';
     if(!ev.prizes||ev.prizes.length<5)ev.prizes=_defPrizes(_evPfx[ev.platform]||'ep');
+    if(_hasLiquor(ev.prizes))ev.prizes=_defPrizes(_evPfx[ev.platform]||'ep');
   });}
   // 메인 게임이 카드뽑기면 룰렛으로 교체
   if(s.gameMode==='card')s.gameMode='roulette';
   // 🎲 주사위 게임: 매장별로 독립된 상품·확률·고객 진행상태 (Supabase에 저장됨, 로컬 전용 아님)
   if(!s.diceGame)s.diceGame=_diceDefaultGame();
   // v2: 상품 구성·확률 개편(스탬프 1~3으로 축소, 음료·주류 비중 확대, 잭팟 상향) + 체류 기준 75초
-  if((s.diceGame.v||0)<2){
+  // v3: 주류 제거(음료·사이드로 재배분). 사장님이 직접 수정한 매장은 다음 버전에서도 자동 교체될 수 있으니
+  //     추후 사장님 커스터마이징 여부를 별도로 추적하는 게 이상적이지만, 아직 실사용 매장이 없는 개발 단계라 단순 버전 교체로 처리한다
+  if((s.diceGame.v||0)<3){
     const _d=_diceDefaultGame();
     s.diceGame.prizes=_d.prizes;
     s.diceGame.verifySeconds=_d.verifySeconds;
-    s.diceGame.v=2;
+    s.diceGame.v=_d.v;
     s.diceGame.tiles=null;
   }
   if(!s.diceGame.tiles||s.diceGame.tiles.length!==(s.diceGame.boardSize||20))s.diceGame.tiles=_diceBuildTiles(s.diceGame.prizes,s.diceGame.boardSize||20);
@@ -2261,7 +2269,7 @@ function saveState(){if(STORE){STORE._sbTs=Date.now();storesDB[STORE_ID]=STORE;s
    보드 위 위치와 무관하게 매 회 설정한 확률 그대로 추첨된다. */
 function _diceDefaultGame(){
   return {
-    v:2,
+    v:3,
     enabled:false,
     boardSize:20,
     firstRollFree:true,
@@ -2270,13 +2278,12 @@ function _diceDefaultGame(){
     verifySeconds:75,
     maxAgainPerDay:2,
     prizes:[
-      {id:'dr1',label:'음료 1잔',icon:'🥤',type:'coupon',weight:22,cost:800,benefit:'음료 1잔 무료'},
-      {id:'lq1',label:'주류 1병',icon:'🍺',type:'coupon',weight:18,cost:1300,benefit:'주류 1병 무료'},
+      {id:'dr1',label:'음료 1잔',icon:'🥤',type:'coupon',weight:32,cost:800,benefit:'음료 1잔 무료'},
       {id:'st1',label:'스탬프 +1',icon:'⭐',type:'stamp',amount:1,weight:16,cost:0},
-      {id:'sd1',label:'지정 사이드',icon:'🍟',type:'coupon',weight:13,cost:2000,benefit:'지정 사이드 메뉴 무료'},
+      {id:'sd1',label:'지정 사이드',icon:'🍟',type:'coupon',weight:18,cost:2000,benefit:'지정 사이드 메뉴 무료'},
       {id:'again',label:'한 번 더!',icon:'🎲',type:'again',weight:8,cost:0},
       {id:'st2',label:'스탬프 +2',icon:'⭐',type:'stamp',amount:2,weight:7,cost:0},
-      {id:'sd2',label:'희망 사이드',icon:'🍤',type:'coupon',weight:7,cost:3000,benefit:'희망 사이드 메뉴 무료'},
+      {id:'sd2',label:'희망 사이드',icon:'🍤',type:'coupon',weight:10,cost:3000,benefit:'희망 사이드 메뉴 무료'},
       {id:'jack',label:'잭팟',icon:'🏆',type:'jackpot',weight:5,minSlots:2,sub:[
         {label:'지정 메인메뉴 1개',weight:55,cost:5000,benefit:'지정 메인메뉴 1개 무료',staffCheck:true},
         {label:'희망 메인메뉴 1개',weight:30,cost:7000,benefit:'희망 메인메뉴 1개 무료',staffCheck:true},
@@ -2395,8 +2402,13 @@ function resolveJackpot(prize){return _diceWeightedPick(prize.sub);}
 function grantDicePrize(prize){
   const state=getMyDiceState();
   if(prize.type==='stamp'){
-    for(let i=0;i<(prize.amount||1);i++)grantStamp('dice');
-    return{kind:'stamp',amount:prize.amount||1};
+    // 게임에서 바로 스탬프를 적립하지 않는다 — 직원이 확인 후 처리하는 쿠폰으로 발급해 남용을 막는다
+    const amt=prize.amount||1;
+    const cid=genId();
+    STORE.coupons.unshift({id:cid,uid:currentUser.id,name:'⭐ 스탬프 '+amt+'개 적립권',benefit:'스탬프 '+amt+'개 적립',
+      expires:expDate(30),cond:'직원 확인 후 적립',status:'available',created:today(),staffCheck:true,grantsStamp:amt});
+    saveState();
+    return{kind:'stamp',amount:amt};
   }
   if(prize.type==='again'){
     state.dice+=1;
@@ -2693,7 +2705,7 @@ function showDiceReveal(result){
 function _showDiceRevealBox(result){
   const {prize,grant}=result;
   let icon=prize.icon||'🎁',name=prize.label||'',sub='쿠폰함에 자동으로 담겼어요';
-  if(grant.kind==='stamp')sub='스탬프 카드에 자동 적립됐어요 ⭐';
+  if(grant.kind==='stamp')sub='쿠폰함에 담겼어요! 직원에게 보여주면 적립돼요 ⭐';
   else if(grant.kind==='again')sub='주사위 1개를 더 받았어요! 계속 굴려보세요';
   else if(grant.kind==='jackpot'){icon='🏆';name=grant.sub.label;sub='쿠폰함에 담겼어요! 직원 확인 후 받으실 수 있어요';}
   document.getElementById('dice-reveal-box').innerHTML=
@@ -4634,7 +4646,11 @@ function showResult(winner){
   const area=document.getElementById('res-coupon');
   if(!isLose){
     const cid=genId();
-    STORE.coupons.unshift({id:cid,uid:currentUser?.id||'guest',name:winner.benefit,benefit:winner.benefit,expires:expDate(30),cond:'1인 1매',status:'available',created:today()});
+    const _gs=+winner.grantsStamp||0;
+    // 스탬프 지급 상품은 자동 적립하지 않고, 직원이 확인 후 처리하는 쿠폰으로 발급한다(적립 남용 방지)
+    STORE.coupons.unshift({id:cid,uid:currentUser?.id||'guest',name:winner.benefit,benefit:winner.benefit,
+      expires:expDate(30),cond:_gs?'직원 확인 후 적립':'1인 1매',status:'available',created:today(),
+      ...(_gs?{staffCheck:true,grantsStamp:_gs}:{})});
     saveState();
     area.innerHTML=renderCouponCard({id:cid,name:winner.benefit,benefit:winner.benefit,expires:expDate(30)});
   }else area.innerHTML='';
@@ -4750,6 +4766,7 @@ function ownerConfirmCoupon(cid){
   const ownCpnUser=STORE.users.find(u=>u.id===c.uid);
   if(ownCpnUser){ownCpnUser.visits=(ownCpnUser.visits||0)+1;STORE.visits++;}
   checkVipUpgrade(ownCpnUser);
+  if(c.grantsStamp)grantStampToUser(c.uid,c.grantsStamp,'coupon:'+c.id);
   if(!STORE.staffLogs)STORE.staffLogs=[];
   STORE.staffLogs.unshift({name:c.name,date:today(),datetime:nowStr(),id:cid,customer:ownCpnUser?.name||'-',staff:'사장님'});
   saveState();
@@ -4844,6 +4861,27 @@ function grantStamp(reason){
       },200);
     }
   });
+}
+// 직원이 쿠폰을 사용 처리하는 시점에 스탬프를 적립한다 (currentUser가 아닌 특정 고객 uid를 대상으로 함).
+// 게임에서 스탬프 상품에 당첨돼도 즉시 자동 적립하지 않고 '직원 확인 후 적립' 쿠폰으로만 발급하는 이유:
+// 클라이언트 단에서 바로 적립해버리면 검증 없이 무한정 쌓일 위험이 있어, 카운터에서 사람이 한 번 확인하는 단계를 강제한다.
+function grantStampToUser(uid,amount,reason){
+  if(!uid||!amount)return;
+  if(!STORE.stampCards)STORE.stampCards={};
+  if(!STORE.stampCards[uid])STORE.stampCards[uid]={count:0,history:[]};
+  const card=STORE.stampCards[uid];
+  const cfg=STORE.stampSettings||{goal:10,reward:'무료 메뉴 1개'};
+  const milestones=((cfg.milestones&&cfg.milestones.length)?cfg.milestones:[{goal:cfg.goal||10,reward:cfg.reward||'무료 메뉴 1개'}]).slice().sort((a,b)=>a.goal-b.goal);
+  for(let i=0;i<amount;i++){
+    card.count++;
+    card.history.push({date:today(),datetime:nowStr(),reason:reason||'staff'});
+    milestones.forEach(m=>{
+      if(card.count===m.goal){
+        const cid=genId();
+        STORE.coupons.unshift({id:cid,uid,name:'⭐ 스탬프 달성: '+m.reward,benefit:m.reward,expires:expDate(60),cond:'1인 1회',status:'available',created:today(),isStamp:true});
+      }
+    });
+  }
 }
 function addStamp(){
   // 테스트 버튼 (사장님 PIN 필요 없이 관리자 환경에서만 노출 예정)
@@ -5551,7 +5589,10 @@ function showExtraResult(winner){
   if(!isLose){
     const cid=genId();
     const name='['+currentExtraEvent.label+'] '+winner.benefit;
-    STORE.coupons.unshift({id:cid,uid:currentUser?.id||'guest',name,benefit:winner.benefit,expires:expDate(30),cond:'1인 1매',status:'available',created:today()});
+    const _gs=+winner.grantsStamp||0;
+    STORE.coupons.unshift({id:cid,uid:currentUser?.id||'guest',name,benefit:winner.benefit,
+      expires:expDate(30),cond:_gs?'직원 확인 후 적립':'1인 1매',status:'available',created:today(),
+      ...(_gs?{staffCheck:true,grantsStamp:_gs}:{})});
     saveState();
     area.innerHTML=renderCouponCard({id:cid,name,benefit:winner.benefit,expires:expDate(30)});
     toast('🎉 '+winner.benefit+' 쿠폰이 발급됐어요!');
@@ -6017,6 +6058,7 @@ function useCpn(cid){
   const cpnUser=STORE.users.find(u=>u.id===c.uid);
   if(cpnUser){cpnUser.visits=(cpnUser.visits||0)+1;STORE.visits++;}
   checkVipUpgrade(cpnUser);
+  if(c.grantsStamp)grantStampToUser(c.uid,c.grantsStamp,'coupon:'+c.id);
   STORE.staffLogs.unshift({name:c.name,date:today(),datetime:nowStr(),id:cid,customer:cpnUser?.name||'-',staff:currentStaff?.name||'직원'});
   saveState();
   document.getElementById('chk-result').innerHTML=`<div class="card card-pad" style="background:var(--green-light);text-align:center"><div style="font-size:40px;margin-bottom:8px">✅</div><div style="font-size:18px;font-weight:900;color:#00a868">사용 처리 완료</div><div style="font-size:14px;color:var(--t3);margin-top:6px" class="strike">${c.name}</div><div style="font-size:12px;color:var(--t4);margin-top:4px">${today()}</div></div>`;
@@ -7090,7 +7132,6 @@ function deleteQuestion(idx){
 }
 
 function renderSettingsAdmin(el){
-  const bgPreview=STORE.profile.bgImage?`<div style="margin-top:10px;border-radius:12px;overflow:hidden;height:120px;background:#000"><img src="${STORE.profile.bgImage}" style="width:100%;height:100%;object-fit:cover"></div>`:'<div style="margin-top:10px;font-size:12px;color:var(--t4)">아직 등록된 배경 이미지가 없어요 (없으면 어두운 기본 배경이 표시됩니다)</div>';
   const _gameUrl=buildStoreUrl(STORE_ID);
   el.innerHTML=`
     <div class="card card-pad" style="border-color:var(--blue)">
@@ -7104,13 +7145,11 @@ function renderSettingsAdmin(el){
       <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:12px">매장 정보</div>
       <div class="field"><label>매장명</label><input id="st-name" value="${(STORE.profile.name||'').replace(/"/g,'&quot;')}"></div>
       <div class="field"><label>대표 이모지</label><input id="st-emoji" value="${STORE.profile.emoji}" maxlength="4"></div>
-      <div class="field" style="border:none"><label>매장 배경 이미지 (첫 화면 상단)</label>${bgPreview}
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <button class="btn btn-light" style="flex:1" onclick="document.getElementById('st-bg-file').click()">📷 이미지 업로드</button><div style="font-size:11px;color:var(--t4);margin-top:5px">최대 2MB · JPG/PNG</div>
-          ${STORE.profile.bgImage?`<button class="btn btn-ghost" style="flex:0 0 auto;width:auto;padding:13px 16px" onclick="removeBgImage()">제거</button>`:''}
-        </div>
-        <input type="file" id="st-bg-file" accept="image/*" style="display:none" onchange="uploadBgImage(this)">
-      </div>
+      ${STORE.profile.bgImage?`<div class="field" style="border:none"><label>매장 배경 이미지</label>
+        <div style="margin-top:10px;border-radius:12px;overflow:hidden;height:120px;background:#000"><img src="${STORE.profile.bgImage}" style="width:100%;height:100%;object-fit:cover"></div>
+        <div style="font-size:11px;color:var(--t4);margin-top:6px;line-height:1.6">사진 업로드 기능은 서버 용량 문제로 더 이상 지원하지 않아요. 이미 등록된 사진은 제거할 수 있어요.</div>
+        <button class="btn btn-ghost" style="margin-top:8px" onclick="removeBgImage()">사진 제거</button>
+      </div>`:''}
       <div class="field"><label>업종</label><select id="st-industry" style="width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:14px;background:var(--white);color:var(--t1);font-family:Noto Sans KR,sans-serif"><option value="한식"${(STORE.profile.industry||'')==='한식'?' selected':''}>한식</option><option value="일식"${(STORE.profile.industry||'')==='일식'?' selected':''}>일식</option><option value="양식"${(STORE.profile.industry||'')==='양식'?' selected':''}>양식</option><option value="중식"${(STORE.profile.industry||'')==='중식'?' selected':''}>중식</option><option value="카페"${(STORE.profile.industry||'')==='카페'?' selected':''}>카페</option><option value="베이커리"${(STORE.profile.industry||'')==='베이커리'?' selected':''}>베이커리</option><option value="패스트푸드"${(STORE.profile.industry||'')==='패스트푸드'?' selected':''}>패스트푸드</option><option value="기타"${(!STORE.profile.industry||STORE.profile.industry==='기타')?' selected':''}>기타</option></select></div>
       <div class="field"><label>네이버 플레이스 URL</label><input id="st-naver" value="${(STORE.profile.naverUrl||'').replace(/"/g,'&quot;')}"></div>
       <div class="field"><label>카카오 채널 URL (구독 링크)</label><input id="st-kakao" value="${(STORE.profile.kakaoUrl||'').replace(/"/g,'&quot;')}" placeholder="https://pf.kakao.com/_xxxxx"></div>
@@ -7160,15 +7199,12 @@ function renderSettingsAdmin(el){
         ${(()=>{const ms=((STORE.stampSettings?.milestones&&STORE.stampSettings.milestones.length)?STORE.stampSettings.milestones:[{goal:STORE.stampSettings?.goal||10,reward:STORE.stampSettings?.reward||'무료 메뉴 1개'}]).slice().sort((a,b)=>a.goal-b.goal);return ms.map((m,i)=>`<div style="display:flex;gap:6px;align-items:flex-end;margin-bottom:10px"><div style="width:72px;flex-shrink:0"><div style="font-size:10px;color:var(--t3);margin-bottom:4px">${i+1}단계 개수</div><input type="number" id="stamp-ms-goal-${i}" value="${m.goal}" min="1" max="200" style="width:100%;padding:10px 8px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-weight:700;text-align:center;background:var(--white);color:var(--t1);font-family:Noto Sans KR,sans-serif;outline:none"></div><div style="font-size:18px;color:var(--t3);margin-bottom:12px;flex-shrink:0">→</div><div style="flex:1"><div style="font-size:10px;color:var(--t3);margin-bottom:4px">보상 내용</div><input id="stamp-ms-reward-${i}" value="${m.reward.replace(/"/g,'&quot;')}" placeholder="예) 아메리카노 1잔" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;background:var(--white);color:var(--t1);font-family:Noto Sans KR,sans-serif;outline:none"></div>${i>0?`<button onclick="removeMilestone(${i})" style="flex-shrink:0;background:var(--red-light);border:none;color:var(--red);font-size:15px;width:34px;height:38px;border-radius:10px;cursor:pointer;margin-bottom:2px">✕</button>`:''}</div>`).join('');})()}
       </div>
       <button onclick="addMilestone()" style="display:block;width:100%;padding:10px;background:none;border:1.5px dashed var(--border);border-radius:10px;font-size:13px;color:var(--t3);cursor:pointer;font-family:Noto Sans KR,sans-serif;margin-bottom:14px">+ 단계 추가</button>
-      <div class="field" style="margin-bottom:14px">
-        <label>보상 메뉴 사진 (선택) — 최고 단계 달성 시 고객에게 표시</label>
-        ${STORE.stampSettings?.rewardImage?
-          `<div style="margin-bottom:8px;border-radius:12px;overflow:hidden;height:120px;background:#000"><img src="${STORE.stampSettings.rewardImage}" style="width:100%;height:100%;object-fit:cover"></div>
-          <button class="btn btn-ghost" style="width:auto;padding:8px 14px;font-size:12px" onclick="removeStampRewardImage()">사진 제거</button>`:
-          `<button class="btn btn-light" onclick="document.getElementById('st-reward-img-file').click()">📷 사진 업로드</button><div style="font-size:11px;color:var(--t4);margin-top:5px">최대 2MB · JPG/PNG</div>`
-        }
-        <input type="file" id="st-reward-img-file" accept="image/*" style="display:none" onchange="uploadStampRewardImage(this)">
-      </div>
+      ${STORE.stampSettings?.rewardImage?`<div class="field" style="margin-bottom:14px">
+        <label>보상 메뉴 사진</label>
+        <div style="margin-bottom:8px;border-radius:12px;overflow:hidden;height:120px;background:#000"><img src="${STORE.stampSettings.rewardImage}" style="width:100%;height:100%;object-fit:cover"></div>
+        <div style="font-size:11px;color:var(--t4);margin-bottom:6px;line-height:1.6">사진 업로드 기능은 서버 용량 문제로 더 이상 지원하지 않아요.</div>
+        <button class="btn btn-ghost" style="width:auto;padding:8px 14px;font-size:12px" onclick="removeStampRewardImage()">사진 제거</button>
+      </div>`:''}
       <button class="btn btn-blue" onclick="saveStampSettings()">스탬프 설정 저장</button>
     </div>
 
@@ -7197,20 +7233,6 @@ function renderSettingsAdmin(el){
       <button class="btn btn-danger" onclick="resetSpinLimit()">🔄 오늘 룰렛 참여 제한 초기화</button>
     </div>
   `;
-}
-function uploadStampRewardImage(input){
-  const file=input.files&&input.files[0];
-  if(!file)return;
-  if(file.size>2*1024*1024){toast('이미지는 2MB 이하로 업로드해주세요');return}
-  const reader=new FileReader();
-  reader.onload=e=>{
-    if(!STORE.stampSettings)STORE.stampSettings={};
-    STORE.stampSettings.rewardImage=e.target.result;
-    saveState();
-    renderSettingsAdmin(document.getElementById('admin-body'));
-    toast('보상 사진이 등록되었습니다');
-  };
-  reader.readAsDataURL(file);
 }
 function removeStampRewardImage(){
   if(STORE.stampSettings)STORE.stampSettings.rewardImage='';
@@ -7297,14 +7319,6 @@ function addStaff(){
 }
 function toggleStaff(i){STORE.staff[i].active=!STORE.staff[i].active;saveState();renderSettingsAdmin(document.getElementById('admin-body'))}
 function removeStaff(i){STORE.staff.splice(i,1);saveState();renderSettingsAdmin(document.getElementById('admin-body'))}
-function uploadBgImage(input){
-  const file=input.files&&input.files[0];
-  if(!file)return;
-  if(file.size>2*1024*1024){toast('이미지는 2MB 이하로 업로드해주세요');return}
-  const reader=new FileReader();
-  reader.onload=e=>{STORE.profile.bgImage=e.target.result;saveState();renderSettingsAdmin(document.getElementById('admin-body'));toast('배경 이미지가 등록되었습니다')};
-  reader.readAsDataURL(file);
-}
 function removeBgImage(){STORE.profile.bgImage='';saveState();renderSettingsAdmin(document.getElementById('admin-body'))}
 function naverUrlToMobile(url){
   // PC/모바일 URL 모두 → 모바일 형식으로 변환
