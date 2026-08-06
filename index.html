@@ -2253,6 +2253,10 @@ function migrateStore(s){
   }
   if(!s.diceGame.tiles||s.diceGame.tiles.length!==(s.diceGame.boardSize||20))s.diceGame.tiles=_diceBuildTiles(s.diceGame.prizes,s.diceGame.boardSize||20);
   if(!s.diceState)s.diceState={};
+  // 쿠폰 사용 정책 — 발급은 후하게, 사용은 하루 N개로 제한해 1일 최대 지출을 확정한다
+  if(!s.couponPolicy)s.couponPolicy={dailyUseLimit:2,unusedWarnAt:5};
+  if(s.couponPolicy.dailyUseLimit===undefined)s.couponPolicy.dailyUseLimit=2;
+  if(s.couponPolicy.unusedWarnAt===undefined)s.couponPolicy.unusedWarnAt=5;
   return s;
 }
 Object.keys(storesDB).forEach(k=>{storesDB[k]=migrateStore(storesDB[k])});
@@ -4712,15 +4716,19 @@ function toggleCoupSel(id){
   renderCoupons('available');
 }
 function renderCoupons(tab){
-  const coupons=STORE.coupons.filter(c=>c.status===tab);
+  const _uid=currentUser&&currentUser.id;
+  // 본인 쿠폰만 노출 (예전엔 매장 전체 쿠폰이 보여 남의 쿠폰까지 열람·사용 가능했음)
+  const coupons=STORE.coupons.filter(c=>c.status===tab&&c.uid===_uid);
   const el=document.getElementById('cpn-list');
+  const _LIM=+(_couponPolicy().dailyUseLimit||0); // 0 = 무제한
   if(!coupons.length){
-    const tipHtml=tab==='available'?'<div style="margin:0 16px 12px;padding:12px 14px;background:var(--blue-light);border-radius:12px;font-size:13px;color:var(--blue);font-weight:600">💡 당일 3개까지 사용 가능! 남은 쿠폰은 다음 방문 시 사용하세요 🎁</div>':'';
+    const tipHtml=(tab==='available'&&_LIM)?`<div style="margin:0 16px 12px;padding:12px 14px;background:var(--blue-light);border-radius:12px;font-size:13px;color:var(--blue);font-weight:600">💡 쿠폰은 하루 ${_LIM}개까지 사용 가능! 남은 쿠폰은 다음 방문 시 사용하세요 🎁</div>`:'';
     el.innerHTML=tipHtml+'<div style="padding:48px 20px;text-align:center;color:var(--t3)">쿠폰이 없어요</div>';return;
   }
-  const todayUsedCount=(STORE.coupons||[]).filter(c=>c.status==='used'&&c.uid===currentUser?.id&&(c.used_at||c.usedAt)===today()).length;
-  const usableSlots=Math.max(0,3-todayUsedCount);
-  if(tab==='available'&&coupons.length>usableSlots&&usableSlots>0){
+  // 스탬프 적립권은 원가 0원이라 하루 한도에서 제외한다
+  const todayUsedCount=_uid?countTodayUsedCoupons(_uid):0;
+  const usableSlots=_LIM?Math.max(0,_LIM-todayUsedCount):coupons.length;
+  if(_LIM&&tab==='available'&&coupons.length>usableSlots&&usableSlots>0){
     // 선택 모드: 고객이 원하는 쿠폰 선택 (최대 usableSlots개)
     if(_selCoupIds.size===0){coupons.slice(0,usableSlots).forEach(c=>_selCoupIds.add(c.id));}
     const selCount=_selCoupIds.size;
@@ -4740,13 +4748,13 @@ function renderCoupons(tab){
     }).join('');
     return;
   }
-  const canUseMore=todayUsedCount<3;
-  const tipHtml=tab==='available'?`<div style="margin:0 16px 12px;padding:12px 14px;background:${canUseMore?'var(--blue-light)':'var(--yellow-light)'};border-radius:12px;font-size:13px;color:${canUseMore?'var(--blue)':'#78350f'};font-weight:600">
-    ${canUseMore?`💡 오늘 ${usableSlots}개 더 사용 가능! 4번째 쿠폰은 다음 방문 시 사용해 다음에 또 오세요 🎁`:'✅ 오늘 3개 모두 사용하셨어요! 남은 쿠폰은 다음 방문 시 사용하세요 😊'}
+  const canUseMore=!_LIM||todayUsedCount<_LIM;
+  const tipHtml=(tab==='available'&&_LIM)?`<div style="margin:0 16px 12px;padding:12px 14px;background:${canUseMore?'var(--blue-light)':'var(--yellow-light)'};border-radius:12px;font-size:13px;color:${canUseMore?'var(--blue)':'#78350f'};font-weight:600">
+    ${canUseMore?`💡 오늘 ${usableSlots}개 더 사용 가능! 남은 쿠폰은 다음 방문 시 사용해 다음에 또 오세요 🎁`:`✅ 오늘 ${_LIM}개 모두 사용하셨어요! 남은 쿠폰은 다음 방문 시 사용하세요 😊`}
   </div>`:'';
   el.innerHTML=tipHtml+coupons.map((c,idx)=>{
     const used=tab==='used',exp=tab==='expired';
-    const isNextVisit=tab==='available'&&idx>=usableSlots;
+    const isNextVisit=!!_LIM&&tab==='available'&&!c.grantsStamp&&idx>=usableSlots;
     return `<div style="${used||exp||isNextVisit?'opacity:.7':''}" onclick="${used||exp||isNextVisit?'':`showCpnDetail('${c.id}')`}"><div class="list-item card" style="margin:0 16px 10px;border-radius:14px"><div class="li-icon" style="background:${used||exp?'var(--bg)':isNextVisit?'var(--yellow-light)':'var(--blue-light)'}">🎟️</div><div class="li-body"><div class="li-title ${used||exp?'strike':''}">${c.name}</div><div class="li-sub">${isNextVisit?'다음 방문 시 사용 가능':c.benefit+' · '+c.expires+'까지'}</div></div><span class="li-badge ${used?'badge-gray':exp?'badge-red':isNextVisit?'badge-yellow':'badge-blue'}">${used?'완료':exp?'만료':isNextVisit?'다음방문':'가능'}</span>${!used&&!exp&&!isNextVisit?'<span class="li-arrow">›</span>':''}</div></div>`;
   }).join('');
 }
@@ -4762,6 +4770,8 @@ function ownerConfirmCoupon(cid){
   if(pin!==STORE.resetPin){toast('PIN이 올바르지 않습니다');return}
   const c=STORE.coupons.find(x=>x.id===cid);
   if(!c||c.status!=='available'){toast('이미 처리되었거나 사용할 수 없는 쿠폰입니다');return}
+  const _olim=checkCouponDailyLimit(c.uid,c);
+  if(!_olim.ok){toast('오늘 '+_olim.used+'개를 사용하셨어요. 쿠폰은 하루 '+_olim.lim+'개까지만 사용 가능합니다');return}
   c.status='used';c.used_at=today();c.used_at_time=nowStr();c.staff='사장님 직접확인';
   const ownCpnUser=STORE.users.find(u=>u.id===c.uid);
   if(ownCpnUser){ownCpnUser.visits=(ownCpnUser.visits||0)+1;STORE.visits++;}
@@ -4865,6 +4875,30 @@ function grantStamp(reason){
 // 직원이 쿠폰을 사용 처리하는 시점에 스탬프를 적립한다 (currentUser가 아닌 특정 고객 uid를 대상으로 함).
 // 게임에서 스탬프 상품에 당첨돼도 즉시 자동 적립하지 않고 '직원 확인 후 적립' 쿠폰으로만 발급하는 이유:
 // 클라이언트 단에서 바로 적립해버리면 검증 없이 무한정 쌓일 위험이 있어, 카운터에서 사람이 한 번 확인하는 단계를 강제한다.
+/* ── 쿠폰 하루 사용 한도 ──
+   당첨(발급)은 비용이 아니고, 매장에서 직원이 확인하는 순간에만 실제 지출이 발생한다.
+   그래서 발급은 후하게 두고 사용만 하루 N개로 묶으면 '손님 1명당 1일 최대 지출'이 확정된다.
+   원가 0원인 스탬프 적립권은 한도에서 제외 — 포함하면 공짜 쿠폰이 한도를 잡아먹어
+   손님은 손해 본 기분, 사장님은 이득도 없는 상황이 된다. */
+function _couponPolicy(){
+  if(!STORE.couponPolicy)STORE.couponPolicy={dailyUseLimit:2,unusedWarnAt:5};
+  return STORE.couponPolicy;
+}
+function countTodayUsedCoupons(uid){
+  const t=today();
+  return (STORE.coupons||[]).filter(c=>c.uid===uid&&c.status==='used'&&c.used_at===t&&!c.grantsStamp).length;
+}
+function checkCouponDailyLimit(uid,coupon){
+  const lim=+(_couponPolicy().dailyUseLimit||0);
+  if(!lim)return{ok:true,lim:0};                        // 0 = 무제한
+  if(coupon&&coupon.grantsStamp)return{ok:true,lim,exempt:true}; // 스탬프 적립권은 한도 제외
+  const used=countTodayUsedCoupons(uid);
+  return{ok:used<lim,used,lim};
+}
+function countUnusedCoupons(uid){
+  const t=today();
+  return (STORE.coupons||[]).filter(c=>c.uid===uid&&c.status==='available'&&c.expires>=t).length;
+}
 function grantStampToUser(uid,amount,reason){
   if(!uid||!amount)return;
   if(!STORE.stampCards)STORE.stampCards={};
@@ -6053,6 +6087,11 @@ function useCpn(cid){
   if(!validPin){toast('PIN이 올바르지 않습니다');return}
   const c=STORE.coupons.find(x=>x.id===cid);
   if(!c||c.status!=='available'){toast('사용할 수 없는 쿠폰입니다');return}
+  const _lim=checkCouponDailyLimit(c.uid,c);
+  if(!_lim.ok){
+    document.getElementById('chk-result').innerHTML=`<div class="card card-pad" style="background:var(--yellow-light,#fff8e6);text-align:center"><div style="font-size:36px;margin-bottom:8px">🙏</div><div style="font-size:17px;font-weight:900;color:#b45309">오늘 사용 한도에 도달했어요</div><div style="font-size:13px;color:var(--t2);margin-top:8px;line-height:1.6">이 고객님은 오늘 이미 <b>${_lim.used}개</b>를 사용하셨어요.<br>쿠폰은 하루 <b>${_lim.lim}개</b>까지 사용할 수 있어요.<br><span style="color:var(--t3)">남은 쿠폰은 다음 방문 때 사용해주세요!</span></div></div>`;
+    return;
+  }
   c.status='used';c.used_at=today();c.used_at_time=nowStr();c.staff=currentStaff?.code;
   // 쿠폰 사용 = 실제 방문 확인 → 해당 고객 visits +1
   const cpnUser=STORE.users.find(u=>u.id===c.uid);
@@ -7208,6 +7247,22 @@ function renderSettingsAdmin(el){
       <button class="btn btn-blue" onclick="saveStampSettings()">스탬프 설정 저장</button>
     </div>
 
+    <div class="card card-pad" style="border-color:var(--blue)">
+      <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px">🎟️ 쿠폰 하루 사용 한도</div>
+      <div style="font-size:12px;color:var(--t3);margin-bottom:12px;line-height:1.65">
+        당첨은 비용이 아니에요. <b>매장에서 직원이 확인하는 순간</b>에만 실제 지출이 생깁니다.<br>
+        그래서 상품은 후하게 주고, 사용만 하루 몇 개로 묶으면 <b>손님 한 명당 하루 최대 지출이 확정</b>돼요.<br>
+        <span style="color:var(--t4)">쌓인 쿠폰은 다시 방문할 이유가 되고, 스탬프 적립권(원가 0원)은 한도에서 제외됩니다.</span></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <input type="number" id="cp-daily-limit" min="0" max="10" value="${_couponPolicy().dailyUseLimit}"
+          oninput="previewCouponLimit()"
+          style="width:80px;padding:11px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;font-weight:700;text-align:center;background:var(--white);color:var(--t1);outline:none">
+        <span style="font-size:13px;color:var(--t3)">개 / 하루 &nbsp;<span style="color:var(--t4)">(0 = 무제한)</span></span>
+      </div>
+      <div id="cp-limit-preview" style="background:var(--blue-light);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--t1);line-height:1.7;margin-bottom:12px"></div>
+      <button class="btn btn-blue" onclick="saveCouponPolicy()">쿠폰 정책 저장</button>
+    </div>
+
     <div class="card card-pad" style="border-color:var(--yellow)">
       <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px">🏆 VIP 등급별 확정 혜택</div>
       <div style="font-size:12px;color:var(--t3);margin-bottom:14px;line-height:1.6">고객이 해당 방문 횟수에 도달하면 쿠폰이 자동 발급됩니다. 내용을 원하시는 대로 수정하세요.</div>
@@ -7233,6 +7288,40 @@ function renderSettingsAdmin(el){
       <button class="btn btn-danger" onclick="resetSpinLimit()">🔄 오늘 룰렛 참여 제한 초기화</button>
     </div>
   `;
+  previewCouponLimit();
+}
+// 원가가 있는 상품 쿠폰 1장의 평균 가치 — 하루 한도가 곧 얼마인지 사장님에게 환산해 보여주기 위한 값
+function avgCouponValue(){
+  const cfg=STORE.diceGame;
+  if(!cfg||!cfg.prizes)return 0;
+  const tw=cfg.prizes.reduce((a,p)=>a+(+p.weight||0),0)||1;
+  let cost=0,rate=0;
+  cfg.prizes.forEach(p=>{
+    if(p.type==='again'||p.type==='stamp')return; // 쿠폰이 아니거나 원가 0원
+    const pr=(+p.weight||0)/tw;
+    rate+=pr;
+    if(p.type==='jackpot'&&p.sub&&p.sub.length){
+      const sw=p.sub.reduce((a,x)=>a+(+x.weight||0),0)||1;
+      cost+=pr*p.sub.reduce((a,x)=>a+((+x.weight||0)/sw)*(+x.cost||0),0);
+    }else cost+=pr*(+p.cost||0);
+  });
+  return rate?Math.round(cost/rate):0;
+}
+function previewCouponLimit(){
+  const el=document.getElementById('cp-limit-preview');
+  if(!el)return;
+  const lim=Math.max(0,+((document.getElementById('cp-daily-limit')||{}).value)||0);
+  const avg=avgCouponValue();
+  el.innerHTML=lim
+    ? `손님 한 명이 하루에 아무리 많이 당첨돼도<br><b style="font-size:16px;color:var(--blue)">최대 ${(avg*lim).toLocaleString()}원</b> 까지만 나갑니다<br><span style="font-size:11.5px;color:var(--t3)">(상품 쿠폰 평균 ${avg.toLocaleString()}원 × ${lim}개)</span>`
+    : `<span style="color:#b45309;font-weight:700">⚠️ 무제한</span> — 하루 지출 상한이 없습니다.<br><span style="font-size:11.5px;color:var(--t3)">쌓인 쿠폰을 한 번에 모두 사용할 수 있어요.</span>`;
+}
+function saveCouponPolicy(){
+  const lim=Math.min(10,Math.max(0,+((document.getElementById('cp-daily-limit')||{}).value)||0));
+  _couponPolicy().dailyUseLimit=lim;
+  saveState();
+  toast(lim?('쿠폰은 하루 '+lim+'개까지 사용 가능으로 저장됐어요'):'쿠폰 사용 제한을 해제했어요');
+  renderSettingsAdmin(document.getElementById('admin-body'));
 }
 function removeStampRewardImage(){
   if(STORE.stampSettings)STORE.stampSettings.rewardImage='';
