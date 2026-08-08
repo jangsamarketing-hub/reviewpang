@@ -1171,8 +1171,14 @@ body.dark .dice-jackpot-banner{background:linear-gradient(160deg,#4A3A18,#3A2C10
     <div id="landing-dice-card"></div>
     <button class="btn btn-blue" id="landing-start-btn" style="font-size:17px;padding:18px" onclick="show('s-login')">🎁 리뷰이벤트 게임 시작</button>
     <button class="btn btn-ghost" style="margin-top:12px" onclick="show('s-owner-signup')">🏪 사장님 회원가입</button>
-    <div style="margin-top:28px;display:flex;justify-content:center">
-      <button onclick="show('s-admin-login')" style="background:none;border:none;font-size:12px;color:var(--t4);cursor:pointer;padding:6px 12px;text-decoration:underline">사장님이신가요?</button>
+    <!-- 사장님이 자기 매장 설정으로 바로 들어가는 입구 (기존엔 프로필 아이콘 안에 숨어 있었음) -->
+    <div style="margin-top:22px;background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer" onclick="show('s-admin-login')">
+      <div style="width:38px;height:38px;border-radius:11px;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0">🏪</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:800;color:var(--t1)">사장님이세요?</div>
+        <div style="font-size:12px;color:var(--t3);margin-top:1px">내 매장 설정하러 가기</div>
+      </div>
+      <span style="font-size:18px;color:var(--t4)">›</span>
     </div>
     <div style="margin-top:16px;text-align:center;padding:10px 14px;background:rgba(26,115,232,0.07);border-radius:10px;border:1px solid rgba(26,115,232,0.13)">
       <span style="font-size:13px;color:var(--t2)">👥 현재 <strong class="store-counter-num" style="color:#1a73e8;font-size:15px">424</strong>명의 사장님이 이용 중</span>
@@ -2231,7 +2237,7 @@ function migrateStore(s){
   // 설문 matrix 문항 레이블 업데이트 (5점→10점)
   if(s.surveyQuestions){s.surveyQuestions.forEach(q=>{if(q.type==='matrix'&&q.label)q.label=q.label.replace('최대 별5개','10점 만점');});}
   if(!s.stampCards)s.stampCards={};
-  if(!s.crmTemplate)s.crmTemplate='(광고) {매장명}\n이벤트 상품 제공안내 🎁\n\n고객님 안녕하세요.\n매장에서 발급해드린 리뷰 이벤트 쿠폰이 곧 만료될 예정입니다.\n\n늦지 않게 매장에 식사하러 오시면 만족스러운 서비스를 제공해 드리겠습니다!\n\n항상 고객님의 만족을 최우선으로 하겠습니다.\n매장에서 기다리고 있겠습니다.\n오늘도 행복한 하루 보내세요!😊\n\n유효기간 : 이번주 까지\n무료수신거부 : 080-500-4233';
+  if(!s.crmTemplate)s.crmTemplate='(광고) {매장명}\n이벤트 상품 제공안내 🎁\n\n고객님 안녕하세요.\n매장에서 발급해드린 리뷰 이벤트 쿠폰이 곧 만료될 예정입니다.\n\n늦지 않게 매장에 식사하러 오시면 만족스러운 서비스를 제공해 드리겠습니다!\n\n항상 고객님의 만족을 최우선으로 하겠습니다.\n매장에서 기다리고 있겠습니다.\n오늘도 행복한 하루 보내세요!😊\n\n유효기간 : 이번주 까지\n무료수신거부 {수신거부}';
   // 구버전 이모지-rating 문항이 있으면 최신 형태로 교체
   if(!s.surveyQuestions||!s.surveyQuestions.length||s.surveyQuestions.some(q=>q.type==='rating')){
     s.surveyQuestions=[
@@ -2317,10 +2323,16 @@ function migrateStore(s){
       {id:'clip',label:'네이버 클립 영상',dice:1,verify:'dwell',premium:false});
   }
   if(!s.diceState)s.diceState={};
+  // 과거 템플릿에 하드코딩돼 있던 수신거부 번호는 실제 매장 번호가 아니라 허위 표기가 되므로
+  // 매장이 직접 등록한 번호를 쓰는 {수신거부} 변수로 강제 교체한다
+  ['crmTemplate'].forEach(k=>{if(typeof s[k]==='string')s[k]=s[k].replace(/무료수신거부\s*:?\s*080-500-4233/g,'무료수신거부 {수신거부}');});
+  if(s.crmTemplates)['dice','promo'].forEach(k=>{
+    if(typeof s.crmTemplates[k]==='string')s.crmTemplates[k]=s.crmTemplates[k].replace(/무료수신거부\s*:?\s*080-500-4233/g,'무료수신거부 {수신거부}');
+  });
   // 주기적 재접촉용 문자 템플릿 2종 (주사위 충전 알림 / 매장 이벤트 홍보)
   if(!s.crmTemplates)s.crmTemplates={};
-  if(!s.crmTemplates.dice)s.crmTemplates.dice='(광고) {매장명}\n🎲 이번 주 주사위가 도착했어요!\n\n{고객명}님, 주사위 {주사위}개를 보내드렸어요.\n지금 굴리면 음료·사이드·식사권까지 당첨될 수 있어요!\n\n▶ 지금 굴리기\n{링크}\n\n당첨 상품은 매장 방문 시 사용하실 수 있어요 😊\n무료수신거부 : 080-500-4233';
-  if(!s.crmTemplates.promo)s.crmTemplates.promo='(광고) {매장명}\n🎁 이번 주 특별 이벤트 안내\n\n{고객명}님 안녕하세요!\n(여기에 이번 주 이벤트나 신메뉴 소식을 적어주세요)\n\n▶ 이벤트 참여하기\n{링크}\n\n오늘도 행복한 하루 보내세요!\n무료수신거부 : 080-500-4233';
+  if(!s.crmTemplates.dice)s.crmTemplates.dice='(광고) {매장명}\n🎲 이번 주 주사위가 도착했어요!\n\n{고객명}님, 주사위 {주사위}개를 보내드렸어요.\n지금 굴리면 음료·사이드·식사권까지 당첨될 수 있어요!\n\n▶ 지금 굴리기\n{링크}\n\n당첨 상품은 매장 방문 시 사용하실 수 있어요 😊\n무료수신거부 {수신거부}';
+  if(!s.crmTemplates.promo)s.crmTemplates.promo='(광고) {매장명}\n🎁 이번 주 특별 이벤트 안내\n\n{고객명}님 안녕하세요!\n(여기에 이번 주 이벤트나 신메뉴 소식을 적어주세요)\n\n▶ 이벤트 참여하기\n{링크}\n\n오늘도 행복한 하루 보내세요!\n무료수신거부 {수신거부}';
   // 사장님이 주 1회 주사위를 충전해주는 방식 — 충전 주기(일)
   if(!s.diceRechargeDays)s.diceRechargeDays=7;
   // 쿠폰 사용 정책 — 발급은 후하게, 사용은 하루 N개로 제한해 1일 최대 지출을 확정한다
@@ -6290,6 +6302,30 @@ function getSelectedUsers(){
   const uids=[...document.querySelectorAll('.cust-chk:checked')].map(c=>c.dataset.uid);
   return STORE.users.filter(u=>uids.includes(u.id));
 }
+/* ── 광고성 문자 발송 전 법적 확인 ──
+   정보통신망법 제50조: 영리목적 광고성 정보는 수신자의 사전 동의(옵트인)를 받은 경우에만 전송할 수 있다.
+   미동의 고객에게 보내면 과태료 대상이므로, 발송 대상에서 코드 레벨로 제외한다.
+   같은 법 제50조 제3항: 21시~익일 8시 전송은 별도의 사전 동의가 필요해 기본적으로 막는다. */
+function filterConsentedForAd(users){
+  const ok=users.filter(u=>!!u.marketing);
+  const blocked=users.length-ok.length;
+  return {ok,blocked};
+}
+function adSendGuard(users){
+  const {ok,blocked}=filterConsentedForAd(users);
+  if(!ok.length){
+    toast('선택한 고객 중 마케팅 수신 동의자가 없어요. 광고 문자는 동의 고객에게만 보낼 수 있습니다');
+    return null;
+  }
+  const h=new Date().getHours();
+  if(h>=21||h<8){
+    if(!confirm('지금은 야간(21시~익일 8시)입니다.\n\n야간 광고 문자는 수신자의 별도 사전 동의가 있어야 전송할 수 있습니다(정보통신망법 제50조 제3항).\n\n그래도 계속하시겠어요?'))return null;
+  }
+  if(blocked)toast(blocked+'명은 마케팅 수신 미동의라 발송 대상에서 제외했어요');
+  return ok;
+}
+// 매장이 직접 등록한 수신거부 연락처 (미등록 시 광고 문자 발송을 막는다)
+function storeOptOut(){return (STORE.profile&&STORE.profile.optOutContact||'').trim();}
 
 function bulkCopyMessages(){
   const users=getSelectedUsers();
@@ -6308,8 +6344,11 @@ function bulkCopyMessages(){
 function bulkSendSMS(){
   const users=getSelectedUsers();
   if(!users.length){toast('선택된 고객이 없습니다');return;}
+  const consented=adSendGuard(users);
+  if(!consented)return;
+  if(!storeOptOut()){toast('⚠️ 매장설정에서 무료수신거부 연락처를 먼저 등록해주세요 (법정 필수 표기)');return;}
   // 전체 번호를 쉼표로 묶어 문자 앱 실행 (Android는 복수 수신자 지원, iOS는 첫번째 수신자)
-  const phones=users.map(u=>u.phone.replace(/-/g,'')).join(',');
+  const phones=consented.map(u=>u.phone.replace(/-/g,'')).join(',');
   const tmpl=(STORE.crmTemplate||'').replace(/\{매장명\}/g,STORE.profile.name||'매장').replace(/\{고객명\}/g,'고객님').replace(/\{쿠폰명\}/g,'').replace(/\{쿠폰번호\}/g,'').replace(/\{유효기간\}/g,'');
   window.open(`sms:${phones}?body=${encodeURIComponent(tmpl)}`,'_self');
   toast(`${users.length}명 문자 앱을 열었습니다. 전송해주세요 ✉️`);
@@ -6324,6 +6363,9 @@ function _crmFill(tpl,u,extra){
     // 여러 명에게 한 번에 보낼 땐 개인화가 불가능하므로 '고객'으로 대체 (템플릿이 "{고객명}님" 형태라 '님' 중복 방지)
     .replace(/\{고객명\}/g,(u&&u.name)||'고객')
     .replace(/\{링크\}/g,buildStoreUrl(STORE_ID))
+    // 정보통신망법 시행령: 광고성 정보에는 전송자 연락처와 수신거부 방법을 명시해야 한다
+    .replace(/\{수신거부\}/g,storeOptOut())
+    .replace(/\{매장연락처\}/g,(STORE.profile&&STORE.profile.phone)||(STORE.owner&&STORE.owner.phone)||'')
     .replace(/\{주사위\}/g,String((extra&&extra.dice)||1))
     .replace(/\{쿠폰명\}/g,'').replace(/\{쿠폰번호\}/g,'').replace(/\{유효기간\}/g,'');
 }
@@ -6357,20 +6399,27 @@ function bulkRechargeDice(amount){
     st.rechargeCount=(st.rechargeCount||0)+1;
   });
   saveState();
-  const phones=ready.map(u=>u.phone.replace(/-/g,'')).join(',');
+  // 주사위 충전은 혜택이라 전원에게 적용하고, 광고성 문자는 수신 동의자에게만 보낸다
+  const targets=adSendGuard(ready);
+  toast(`🎲 ${ready.length}명에게 주사위 ${amt}개 충전 완료!`+(skipped?` (${skipped}명은 최근 충전돼 제외)`:''));
+  renderCustomersTab(document.getElementById('admin-body'));
+  if(!targets)return;
+  if(!storeOptOut()){toast('⚠️ 매장설정에서 무료수신거부 연락처를 먼저 등록해주세요 (법정 필수 표기)');return;}
+  const phones=targets.map(u=>u.phone.replace(/-/g,'')).join(',');
   const body=_crmFill(STORE.crmTemplates&&STORE.crmTemplates.dice,null,{dice:amt});
   window.open(`sms:${phones}?body=${encodeURIComponent(body)}`,'_self');
-  toast(`🎲 ${ready.length}명에게 주사위 ${amt}개 충전 완료!`+(skipped?` (${skipped}명은 최근 충전돼 제외)`:'')+' 문자 앱에서 전송해주세요');
-  renderCustomersTab(document.getElementById('admin-body'));
 }
 // 매장 이벤트/상품 홍보 문자 (주사위 충전 없음)
 function bulkSendPromo(){
   const users=getSelectedUsers();
   if(!users.length){toast('선택된 고객이 없습니다');return;}
-  const phones=users.map(u=>u.phone.replace(/-/g,'')).join(',');
+  const targets=adSendGuard(users);
+  if(!targets)return;
+  if(!storeOptOut()){toast('⚠️ 매장설정에서 무료수신거부 연락처를 먼저 등록해주세요 (법정 필수 표기)');return;}
+  const phones=targets.map(u=>u.phone.replace(/-/g,'')).join(',');
   const body=_crmFill(STORE.crmTemplates&&STORE.crmTemplates.promo,null,{});
   window.open(`sms:${phones}?body=${encodeURIComponent(body)}`,'_self');
-  toast(`${users.length}명 문자 앱을 열었습니다. 전송해주세요 ✉️`);
+  toast(`${targets.length}명 문자 앱을 열었습니다. 전송해주세요 ✉️`);
 }
 
 /* ════════════════════ 직원: 쿠폰 확인 + QR 스캔 ════════════════════ */
@@ -7534,6 +7583,11 @@ function renderSettingsAdmin(el){
       <div style="font-size:12px;font-weight:700;color:var(--t2);margin:16px 0 10px;padding-top:14px;border-top:1px solid var(--border2)">📝 리뷰 링크 설정 <span style="font-size:11px;font-weight:400;color:var(--t3)">— 고객 '리뷰 작성하러 가기' 버튼에 표시</span></div>
       <div class="field"><label>카카오맵 리뷰 URL <span style="font-size:11px;color:var(--t3)">선택</span></label><input id="st-kakao-review" value="${(STORE.profile.kakaoReviewUrl||'').replace(/"/g,'&quot;')}" placeholder="https://place.map.kakao.com/..."></div>
       <div class="field"><label>네이버 클립 URL <span style="font-size:11px;color:var(--t3)">선택</span></label><input id="st-naver-clip" value="${(STORE.profile.naverClipUrl||'').replace(/"/g,'&quot;')}" placeholder="https://m.place.naver.com/.../clip 또는 업로드 링크"></div>
+      <div class="field" style="margin-bottom:14px;border:1.5px solid ${storeOptOut()?'var(--border)':'var(--red)'};border-radius:12px;padding:12px">
+        <label style="color:${storeOptOut()?'var(--t2)':'var(--red)'}">📵 무료수신거부 연락처 <span style="font-size:11px;font-weight:800">${storeOptOut()?'':'— 광고 문자 발송에 필수'}</span></label>
+        <input id="st-optout" value="${(STORE.profile.optOutContact||'').replace(/"/g,'&quot;')}" placeholder="예) 080-000-0000 또는 매장 전화번호">
+        <div style="font-size:11px;color:var(--t4);margin-top:6px;line-height:1.65">광고성 문자에는 <b>수신거부 방법</b>을 반드시 표기해야 합니다(정보통신망법). 실제로 연결되는 번호를 입력해주세요 — 등록 전에는 문자 발송이 차단됩니다.</div>
+      </div>
       <div class="field"><label>인스타그램 URL <span style="font-size:11px;color:var(--t3)">선택</span></label><input id="st-instagram" value="${(STORE.profile.instagramUrl||'').replace(/"/g,'&quot;')}" placeholder="https://instagram.com/계정명"></div>
       <div class="field" style="margin-bottom:14px"><label>구글 지도 리뷰 URL <span style="font-size:11px;color:var(--t3)">선택</span></label><input id="st-google-review" value="${(STORE.profile.googleReviewUrl||'').replace(/"/g,'&quot;')}" placeholder="https://search.google.com/local/writereview?placeid=..."></div>
       <div class="field"><label>주소</label><input id="st-addr" value="${(STORE.profile.address||'').replace(/"/g,'&quot;')}"></div>
@@ -7815,6 +7869,7 @@ function saveStoreSettings(){
   STORE.profile.kakaoChatUrl=(document.getElementById('st-kakao-chat')?.value||'').trim();
   STORE.profile.kakaoReviewUrl=(document.getElementById('st-kakao-review')?.value||'').trim();
   STORE.profile.naverClipUrl=(document.getElementById('st-naver-clip')?.value||'').trim();
+  STORE.profile.optOutContact=(document.getElementById('st-optout')?.value||'').trim();
   STORE.profile.googleReviewUrl=(document.getElementById('st-google-review')?.value||'').trim();
   STORE.profile.instagramUrl=(document.getElementById('st-instagram')?.value||'').trim();
   STORE.profile.address=document.getElementById('st-addr').value.trim();
