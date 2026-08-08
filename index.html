@@ -1970,12 +1970,19 @@ function seedDemoStore(){
     naverLinked:false,naverPlaceUrl:'',naverReviewUrl:'',
     resetPin:'0123',
     profile:{name:'맛있는집',emoji:'🍽️',bgImage:'',naverUrl:'https://map.naver.com',kakaoUrl:'https://pf.kakao.com',kakaoChatUrl:'',address:'서울 강남구 테헤란로 123',hours:'11:00 ~ 22:00'},
+    // 1등은 🏆 잭팟 — 당첨 시 같은 게임을 한 번 더 돌려 세부 상품을 정한다
     prizes:[
-      {id:'r1',name:'희망 메뉴 1개',prob:3,color:'#FFD700',benefit:'희망 메뉴 1개 무료 (직원 확인 후 제공)'},
+      {id:'r1',name:'🏆 잭팟',prob:3,color:'#FFD700',benefit:'잭팟 당첨',sub:[
+        {label:'지정 메인메뉴 1개',weight:55,cost:5000,benefit:'지정 메인메뉴 1개 무료'},
+        {label:'희망 메인메뉴 1개',weight:30,cost:7000,benefit:'희망 메인메뉴 1개 무료'},
+        {label:'3만원 식사권',weight:11,cost:10000,benefit:'3만원 상당 식사권'},
+        {label:'5만원 식사권',weight:3,cost:17000,benefit:'5만원 상당 식사권'},
+        {label:'10만원 식사권',weight:1,cost:33000,benefit:'10만원 상당 식사권'}
+      ]},
       {id:'r2',name:'희망 사이드 1개',prob:20,color:'#C0C0C0',benefit:'희망 사이드 메뉴 1개 무료'},
       {id:'r3',name:'지정 사이드 1개',prob:30,color:'#cd7f32',benefit:'지정 사이드 메뉴 무료'},
-      {id:'r4',name:'주류 1개',prob:22,color:'#9ca3af',benefit:'주류 1개 무료'},
-      {id:'r5',name:'음료수 1개',prob:25,color:'#e5e7eb',benefit:'음료수 1개 무료'}
+      {id:'r4',name:'음료수 1개',prob:25,color:'#3182f6',benefit:'음료수 1개 무료'},
+      {id:'r5',name:'스탬프 1개 적립',prob:22,color:'#8b5cf6',benefit:'스탬프 1개 적립',grantsStamp:1}
     ],
     surveyQuestions:[
       {id:'q2',type:'matrix',label:'솔직한 평가가 도움이 됩니다 (10점 만점)',items:['가격대비 맛','가격대비 양','조리 시간','직원 친절도','매장 청결도']},
@@ -1996,7 +2003,7 @@ function seedDemoStore(){
     staffLogs:[],
     spinLog,
     stamps:3,visits:2,
-    gameMode:'roulette',
+    gameMode:'dice',   // 신규 매장 기본 메인게임 = 🎲 주사위
     stampSettings:{goal:10,reward:'무료 메뉴 1개',grantStamp:'survey',milestones:[{goal:5,reward:'음료 1잔 무료'},{goal:10,reward:'무료 메뉴 1개'}]},
     stampCards:{'u1':{count:3,history:[]}},
     vipBenefits:{10:'평생 음료 1잔 무료',20:'평생 사이드메뉴 1개 무료',30:'평생 메인메뉴 1개 무료',50:'평생 월 식사권 1회 무료'},
@@ -2178,7 +2185,7 @@ function migrateStore(s){
     s.events.sort((a,b)=>order.indexOf(a.platform)-order.indexOf(b.platform));
   }
   if(!s.extraSpinLog)s.extraSpinLog={};
-  if(!s.gameMode)s.gameMode='roulette';
+  if(!s.gameMode)s.gameMode='dice';
   if(!s.profile.kakaoChatUrl)s.profile.kakaoChatUrl='';
   if(!s.profile.industry)s.profile.industry='기타';
   if(!s.stampSettings)s.stampSettings={goal:10,reward:'무료 메뉴 1개',grantStamp:'survey',milestones:[{goal:5,reward:'무료 사이드 메뉴 1개'},{goal:10,reward:'무료 메뉴 1개'}]};
@@ -2217,8 +2224,17 @@ function migrateStore(s){
   }
   // 구버전 상품 확률 (4개 이하) 이면 5개 기본값으로 교체
   // v2: 주류 제거, 4등=음료수 · 5등=스탬프 1개 적립(grantsStamp) — 서버 용량과 무관하게 실물 재고 없는 상품 위주로 재편
+  // v3: 1등을 '🏆 잭팟'으로 교체 — 당첨 시 같은 게임을 한 번 더 돌려 세부 상품을 정한다.
+  // 같은 비용으로 10만원 식사권 같은 고급 상품을 걸 수 있게 된다.
+  const _JP_SUB=[
+    {label:'지정 메인메뉴 1개',weight:55,cost:5000,benefit:'지정 메인메뉴 1개 무료'},
+    {label:'희망 메인메뉴 1개',weight:30,cost:7000,benefit:'희망 메인메뉴 1개 무료'},
+    {label:'3만원 식사권',weight:11,cost:10000,benefit:'3만원 상당 식사권'},
+    {label:'5만원 식사권',weight:3,cost:17000,benefit:'5만원 상당 식사권'},
+    {label:'10만원 식사권',weight:1,cost:33000,benefit:'10만원 상당 식사권'}
+  ];
   const _defPrizes=(pfx)=>[
-    {id:pfx+'1',name:'희망 메뉴 1개',prob:3,color:'#FFD700',benefit:'희망 메뉴 1개 무료 (직원 확인 후 제공)'},
+    {id:pfx+'1',name:'🏆 잭팟',prob:3,color:'#FFD700',benefit:'잭팟 당첨',sub:_JP_SUB.map(x=>({...x}))},
     {id:pfx+'2',name:'희망 사이드 1개',prob:20,color:'#C0C0C0',benefit:'희망 사이드 메뉴 1개 무료'},
     {id:pfx+'3',name:'지정 사이드 1개',prob:30,color:'#cd7f32',benefit:'지정 사이드 메뉴 무료'},
     {id:pfx+'4',name:'음료수 1개',prob:25,color:'#3182f6',benefit:'음료수 1개 무료'},
@@ -2226,11 +2242,13 @@ function migrateStore(s){
   ];
   // 이미 만들어진 매장에 남아있는 '주류' 상품은 자동으로 새 기본값으로 교체 (사장님이 직접 커스터마이징한 경우는 건드리지 않음)
   const _hasLiquor=arr=>Array.isArray(arr)&&arr.some(p=>(p.name||'').includes('주류')||(p.benefit||'').includes('주류'));
+  // 구버전 1등('희망 메뉴 1개')이 남아있으면 잭팟 구조로 교체
+  const _needsJackpot=arr=>Array.isArray(arr)&&arr.length&&!arr.some(p=>p.sub&&p.sub.length)&&arr.some(p=>(p.name||'').includes('희망 메뉴'));
   const mg=s.mainGame;
   if(mg&&mg.prizes&&mg.prizes.length<5)mg.prizes=_defPrizes('r');
   if(!s.prizes||s.prizes.length<5)s.prizes=_defPrizes('r');
-  if(mg&&_hasLiquor(mg.prizes))mg.prizes=_defPrizes('r');
-  if(_hasLiquor(s.prizes))s.prizes=_defPrizes('r');
+  if(mg&&(_hasLiquor(mg.prizes)||_needsJackpot(mg.prizes)))mg.prizes=_defPrizes('r');
+  if(_hasLiquor(s.prizes)||_needsJackpot(s.prizes))s.prizes=_defPrizes('r');
   // 이벤트 gameMode + 상품 기본값
   const _evGM={kakao:'ladder',google:'scratch',instagram:'roulette'};
   const _evPfx={kakao:'ek',google:'eg',instagram:'ei'};
@@ -2238,7 +2256,7 @@ function migrateStore(s){
     if(!ev.gameMode&&_evGM[ev.platform])ev.gameMode=_evGM[ev.platform];
     if(ev.gameMode==='card')ev.gameMode=_evGM[ev.platform]||'ladder';
     if(!ev.prizes||ev.prizes.length<5)ev.prizes=_defPrizes(_evPfx[ev.platform]||'ep');
-    if(_hasLiquor(ev.prizes))ev.prizes=_defPrizes(_evPfx[ev.platform]||'ep');
+    if(_hasLiquor(ev.prizes)||_needsJackpot(ev.prizes))ev.prizes=_defPrizes(_evPfx[ev.platform]||'ep');
   });}
   // 메인 게임이 카드뽑기면 룰렛으로 교체
   if(s.gameMode==='card')s.gameMode='roulette';
@@ -2629,6 +2647,7 @@ function renderDiceHomePreview(heroCard){
 }
 // 주사위를 여러 바퀴 굴린 뒤 지정된 눈에서 감속하며 멈춤 (본판·잭팟 공용)
 function _diceTumble(cubes,wraps,a,b,done){
+  diceRollSound();
   [a,b].forEach((val,i)=>{
     const cube=cubes[i],wrap=wraps[i];
     if(!cube)return;
@@ -2716,6 +2735,7 @@ function showDiceReveal(result){
   _showDiceRevealBox(result);
 }
 function _showDiceRevealBox(result){
+  winSound();
   const {prize,grant}=result;
   let icon=prize.icon||'🎁',name=prize.label||'',sub='쿠폰함에 자동으로 담겼어요';
   if(grant.kind==='stamp')sub='쿠폰함에 담겼어요! 직원에게 보여주면 적립돼요 ⭐';
@@ -3212,7 +3232,7 @@ function renderLoginPrizes(){
   const preview=document.getElementById('login-prizes-preview');
   const list=document.getElementById('login-prizes-list');
   if(!preview||!list||!STORE)return;
-  const prizes=(STORE.mainGame?.prizes||STORE.prizes||[]).filter(p=>p.benefit&&p.benefit.trim());
+  const prizes=(STORE.mainGame?.prizes||_gamePrizes()).filter(p=>p.benefit&&p.benefit.trim());
   if(!prizes.length){preview.style.display='none';return;}
   const medals=['🥇','🥈','🥉'];
   const top=prizes.slice(0,3);
@@ -3882,26 +3902,89 @@ function initAudio(){if(!audioCtx){try{audioCtx=new(window.AudioContext||window.
 function _mkAudio(src){const a=new Audio(src);a.preload='auto';return a;}
 // 미리 생성해서 브라우저가 즉시 버퍼링 시작 → 버튼 누르자마자 재생
 let _spinAudio=_mkAudio('spin.mp3'),_ladderAudio=_mkAudio('ladder.mp3'),_scratchAudio=_mkAudio('scratch.mp3');
+// 볼륨은 여기서 한 곳으로 관리 (기존 값이 너무 커서 전체적으로 낮춤)
+const BGM_VOL={spin:0.16,ladder:0.24,scratch:0.20};
+/* 첫 재생이 늦게 시작되던 문제:
+   브라우저는 사용자 제스처 전까지 오디오 파이프라인을 열지 않아, 버튼을 누른 뒤에야
+   디코딩·버퍼링이 시작돼 소리가 한 박자 늦게 나왔다.
+   → 화면을 처음 터치하는 순간 무음으로 한 번 재생해 파이프라인을 미리 열어둔다. */
+let _audioWarmed=false;
+function warmAudio(){
+  if(_audioWarmed)return;
+  _audioWarmed=true;
+  initAudio();
+  if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});
+  [_spinAudio,_ladderAudio,_scratchAudio].forEach(a=>{
+    try{
+      a.volume=0;
+      const p=a.play();
+      if(p&&p.then)p.then(()=>{a.pause();a.currentTime=0;}).catch(()=>{});
+    }catch(e){}
+  });
+}
+document.addEventListener('pointerdown',warmAudio,{once:true});
+document.addEventListener('touchstart',warmAudio,{once:true});
+
 function playSpinBGM(){
   if(!soundOn)return;
-  _spinAudio.loop=true;_spinAudio.volume=0.4;
-  _spinAudio.currentTime=0;_spinAudio.play().catch(()=>{});
+  _spinAudio.loop=true;_spinAudio.volume=BGM_VOL.spin;
+  if(_spinAudio.currentTime)_spinAudio.currentTime=0; // 이미 0이면 불필요한 seek 생략 (지연 원인)
+  _spinAudio.play().catch(()=>{});
 }
 function stopSpinBGM(){_spinAudio.pause();_spinAudio.currentTime=0;}
 function playLadderBGM(){
   if(!soundOn)return;
-  _ladderAudio.loop=true;_ladderAudio.volume=0.6;
-  _ladderAudio.currentTime=0;_ladderAudio.play().catch(()=>{});
+  _ladderAudio.loop=true;_ladderAudio.volume=BGM_VOL.ladder;
+  if(_ladderAudio.currentTime)_ladderAudio.currentTime=0;
+  _ladderAudio.play().catch(()=>{});
 }
 function stopLadderBGM(){_ladderAudio.pause();_ladderAudio.currentTime=0;}
 function playScratchBGM(){
   if(!soundOn)return;
-  _scratchAudio.loop=true;_scratchAudio.volume=0.5;
-  if(_scratchAudio.paused){_scratchAudio.currentTime=0;_scratchAudio.play().catch(()=>{});}
+  _scratchAudio.loop=true;_scratchAudio.volume=BGM_VOL.scratch;
+  if(_scratchAudio.paused){if(_scratchAudio.currentTime)_scratchAudio.currentTime=0;_scratchAudio.play().catch(()=>{});}
 }
 function stopScratchBGM(){_scratchAudio.pause();_scratchAudio.currentTime=0;}
 function stopAllBGM(){stopSpinBGM();stopLadderBGM();stopScratchBGM();}
 function tick(){}
+
+/* 🎲 주사위 굴리는 소리 — 별도 음원 없이 Web Audio로 합성한다.
+   짧은 노이즈 버스트(딸그락)를 간격을 점점 벌리며 재생해 감속을 표현하고,
+   마지막에 낮은 음으로 착지음을 낸다. 타이밍은 3D 큐브 애니메이션(1.5s)에 맞춤. */
+let _noiseBuf=null;
+function _getNoiseBuf(){
+  if(_noiseBuf||!audioCtx)return _noiseBuf;
+  const len=Math.floor(audioCtx.sampleRate*0.2);
+  _noiseBuf=audioCtx.createBuffer(1,len,audioCtx.sampleRate);
+  const d=_noiseBuf.getChannelData(0);
+  for(let i=0;i<len;i++)d[i]=Math.random()*2-1;
+  return _noiseBuf;
+}
+function _clack(when,freq,dur,vol){
+  const buf=_getNoiseBuf();if(!buf)return;
+  const src=audioCtx.createBufferSource();src.buffer=buf;
+  const bp=audioCtx.createBiquadFilter();
+  bp.type='bandpass';bp.frequency.value=freq;bp.Q.value=2.4;
+  const g=audioCtx.createGain();
+  src.connect(bp);bp.connect(g);g.connect(audioCtx.destination);
+  g.gain.setValueAtTime(0.0001,when);
+  g.gain.linearRampToValueAtTime(vol,when+0.004);
+  g.gain.exponentialRampToValueAtTime(0.0001,when+dur);
+  src.start(when);src.stop(when+dur+0.02);
+}
+function diceRollSound(){
+  initAudio();
+  if(!soundOn||!audioCtx)return;
+  if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});
+  const t0=audioCtx.currentTime;
+  let t=0.02;
+  for(let i=0;i<11;i++){
+    const p=i/10;
+    _clack(t0+t,1400-p*700,0.05,0.13*(1-p*0.45));
+    t+=0.055+p*p*0.20; // 간격이 점점 벌어지며 감속
+  }
+  _clack(t0+1.42,320,0.13,0.18); // 착지
+}
 function winSound(){
   initAudio();
   if(!soundOn||!audioCtx)return;
@@ -3924,7 +4007,7 @@ function initWheel(){
   drawWheel(c.getContext('2d'),spinAngle);
   const btn=document.getElementById('spin-btn');
   const last=localStorage.getItem('lastSpin_'+STORE_ID);
-  const blocked=last===today();
+  const blocked=(last===today()&&!_jpStage);
   if(blocked){btn.disabled=true;btn.textContent='오늘 이미 참여했어요'}
   else{btn.disabled=false;btn.textContent='돌리기'}
   document.getElementById('owner-reset-wrap').style.display=blocked?'block':'none';
@@ -3942,7 +4025,7 @@ function ownerResetSpin(){
   else initWheel();
 }
 function drawWheel(ctx,rot){
-  const cx=150,cy=150,r=140,prizes=STORE.prizes;
+  const cx=150,cy=150,r=140,prizes=_gamePrizes();
   ctx.clearRect(0,0,300,300);
   const sl=2*Math.PI/prizes.length;
   const fontSize=prizes.length>6?11:12;
@@ -4011,8 +4094,31 @@ function recordDailyPrize(prizeIdx,totalPrizes){
   STORE.dailyPrizeLog[key].push({prizeIdx,totalPrizes});
   saveState();
 }
+/* ════ 🏆 잭팟 2차 추첨 (룰렛·복권·사다리 공용) ════
+   1차에서 '잭팟'이 나오면 같은 게임을 한 번 더 돌려 세부 상품을 정한다.
+   2차 동안에는 게임이 읽는 상품 목록을 잭팟 하위 상품으로 갈아끼운다. */
+let _jpStage=null;   // null이 아니면 잭팟 2차 진행 중
+const _JP_COLORS=['#FFD700','#C0C0C0','#cd7f32','#9ca3af','#e5e7eb'];
+function _gamePrizes(){return (_jpStage&&_jpStage.prizes)||STORE.prizes||[];}
+function _enterJackpotStage(winner){
+  _jpStage={prizes:(winner.sub||[]).map((s,i)=>({
+    id:'jp'+i,name:s.label,benefit:s.benefit||s.label,prob:+s.weight||0,
+    color:_JP_COLORS[i%_JP_COLORS.length],cost:s.cost,staffCheck:true
+  }))};
+}
+function _exitJackpotStage(){_jpStage=null;}
+// 잭팟 2차: 같은 게임을 하루 1회 제한과 무관하게 한 번 더 실행
+function _restartGameForJackpot(){
+  const gm=STORE.gameMode||'dice';
+  toast('🏆 잭팟! 한 번 더 돌려서 상품이 정해져요');
+  setTimeout(()=>{
+    if(gm==='scratch'){show('s-scratch');setTimeout(()=>doScratch(),400);}
+    else if(gm==='ladder'){show('s-ladder');setTimeout(()=>{initLadder();},300);}
+    else{show('s-roulette');setTimeout(()=>{initWheel();doSpin();},400);}
+  },900);
+}
 function pickWinner(){
-  const allPrizes=STORE.prizes||[];
+  const allPrizes=_gamePrizes();
   // 꽝(benefit 없는 상품) 제외
   const prizes=allPrizes.filter(p=>p.benefit&&p.benefit.trim());
   if(!prizes.length)return allPrizes[allPrizes.length-1]||{benefit:'',name:'꽝'};
@@ -4103,7 +4209,7 @@ function getLadderPath(startCol,hconn,n,H){
 function initLadder(){
   ladderBusy=false;ladderHconn=null;ladderPrizeMap=null;ladderPicked=-1;
   const last=localStorage.getItem('lastSpin_'+STORE_ID);
-  const prizes=(STORE.prizes||[]).filter(p=>p.benefit&&p.benefit.trim());
+  const prizes=_gamePrizes().filter(p=>p.benefit&&p.benefit.trim());
   const n=Math.min(prizes.length,5);
   const animals=LADDER_ANIMALS.slice(0,n);
   const animalEl=document.getElementById('ladder-animals');
@@ -4130,7 +4236,7 @@ function initLadder(){
   drawLadderMystery(ctx,n,340,260);
   document.getElementById('ladder-result-msg').textContent='';
   const ownerResetEl=document.getElementById('ladder-owner-reset');
-  if(last===today()){
+  if((last===today()&&!_jpStage)){
     startBtn.style.display='none';alreadyEl.style.display='block';
     alreadyEl.innerHTML='<div class="error-msg" style="margin:8px 0">오늘은 이미 참여하셨습니다. 내일 다시 도전해주세요!</div>';
     statusEl.textContent='내일 다시 도전하세요!';
@@ -4155,12 +4261,12 @@ function doLadderStart(){
   if(ladderBusy)return;
   if(ladderPicked<0){toast('먼저 동물을 선택하세요!');return;}
   const last=localStorage.getItem('lastSpin_'+STORE_ID);
-  if(last===today()){document.getElementById('ladder-error').innerHTML='<div class="error-msg">오늘 이미 참여하셨습니다</div>';return;}
+  if((last===today()&&!_jpStage)){document.getElementById('ladder-error').innerHTML='<div class="error-msg">오늘 이미 참여하셨습니다</div>';return;}
   ladderBusy=true;
   initAudio();if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();
   document.getElementById('ladder-start-btn').style.display='none';
   document.getElementById('ladder-status').textContent='사다리를 생성하는 중...';
-  const prizes=(STORE.prizes||[]).filter(p=>p.benefit&&p.benefit.trim());
+  const prizes=_gamePrizes().filter(p=>p.benefit&&p.benefit.trim());
   const n=Math.min(prizes.length,5);
   const levels=10;
   // 확률로 당첨 먼저 결정
@@ -4247,7 +4353,7 @@ function initMainCard(){
   const N=5;
   // 카드 1개만 실제 확률 적용, 나머지는 1등 제외 lower prize로 채움
   const _rp=pickWinner();
-  const _pp=STORE.prizes||[];
+  const _pp=_gamePrizes();
   // 하위 상품 셔플 — 각 카드에 고유 상품이 배정되도록
   const _lp=_pp.length>1?[..._pp.slice(1)]:[..._pp];
   for(let _j=_lp.length-1;_j>0;_j--){const _k=Math.floor(Math.random()*(_j+1));[_lp[_j],_lp[_k]]=[_lp[_k],_lp[_j]];}
@@ -4264,7 +4370,7 @@ function initMainCard(){
       <div style="font-size:36px">🃏</div>
     </div>`;
   }).join('');
-  if(last===today()){
+  if((last===today()&&!_jpStage)){
     btn.style.display='none';alreadyEl.style.display='block';
     errEl.innerHTML='<div class="error-msg">오늘은 이미 참여하셨습니다. 내일 다시 도전해주세요!</div>';
   }else{
@@ -4275,7 +4381,7 @@ function initMainCard(){
 function doMainCardStart(){
   if(mainCardBusy)return;
   const last=localStorage.getItem('lastSpin_'+STORE_ID);
-  if(last===today()){document.getElementById('card-error').innerHTML='<div class="error-msg">오늘 이미 참여하셨습니다</div>';return}
+  if((last===today()&&!_jpStage)){document.getElementById('card-error').innerHTML='<div class="error-msg">오늘 이미 참여하셨습니다</div>';return}
   mainCardBusy=true;
   initAudio();if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();
   const btn=document.getElementById('card-spin-btn');
@@ -4323,7 +4429,7 @@ function pickMainCard(idx){
   const winner=window.__mainCardPrizes[idx];
   const isWin=!!(winner&&winner.benefit&&winner.benefit.trim());
   initAudio();tick(0.5);
-  const prizes=STORE.prizes||[];
+  const prizes=_gamePrizes();
   const picked=cards[idx];
   // 앞으로 뒤집기 (rotateY 0→90→0)
   picked.style.transition='transform .3s ease-in';
@@ -4357,7 +4463,7 @@ function pickMainCard(idx){
       checkVipUpgrade(currentUser);
       localStorage.setItem('lastSpin_'+STORE_ID,today());
       saveState();
-      const _cp=(STORE.prizes||[]).filter(p=>p.benefit&&p.benefit.trim());
+      const _cp=_gamePrizes().filter(p=>p.benefit&&p.benefit.trim());
       recordDailyPrize(_cp.findIndex(x=>x.id===winner.id),_cp.length);
       setTimeout(()=>showResult(winner),800);
     },360);
@@ -4382,7 +4488,7 @@ function initScratchCard(){
   document.getElementById('scratch-progress').style.width='0%';
 
   let _hasPending=false;
-  if(last===today()){
+  if((last===today()&&!_jpStage)){
     // 미완료 복권이 있으면 복원
     const _pendStr=localStorage.getItem('scratchPending_'+STORE_ID);
     if(_pendStr){
@@ -4515,7 +4621,7 @@ function revealScratch(){
   checkVipUpgrade(currentUser);
   localStorage.setItem('lastSpin_'+STORE_ID,today());
   saveState();
-  const _sp=(STORE.prizes||[]).filter(p=>p.benefit&&p.benefit.trim());
+  const _sp=_gamePrizes().filter(p=>p.benefit&&p.benefit.trim());
   recordDailyPrize(_sp.findIndex(x=>x.id===scratchWinner?.id),_sp.length);
 
   const canvas=document.getElementById('scratch-canvas');
@@ -4547,7 +4653,7 @@ function revealScratch(){
 
 function doScratch(){
   const last=localStorage.getItem('lastSpin_'+STORE_ID);
-  if(last===today()){
+  if((last===today()&&!_jpStage)){
     document.getElementById('scratch-error').innerHTML='<div class="error-msg">오늘은 이미 참여하셨습니다!</div>';
     return;
   }
@@ -4577,11 +4683,11 @@ function doSpin(){
   if(isSpinning)return;
   initAudio();if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();
   const last=localStorage.getItem('lastSpin_'+STORE_ID);
-  if(last===today()){document.getElementById('spin-error').innerHTML='<div class="error-msg">오늘은 이미 참여하셨습니다. 내일 다시 도전해주세요!</div>';return}
+  if((last===today()&&!_jpStage)){document.getElementById('spin-error').innerHTML='<div class="error-msg">오늘은 이미 참여하셨습니다. 내일 다시 도전해주세요!</div>';return}
   document.getElementById('spin-error').innerHTML='';
   isSpinning=true;playSpinBGM();
   const btn=document.getElementById('spin-btn');btn.disabled=true;btn.textContent='두근두근...';
-  const prizes=STORE.prizes;
+  const prizes=_gamePrizes();
   const winner=pickWinner();
   const wi=Math.max(0,prizes.findIndex(x=>x.id===winner.id));
   const sl=2*Math.PI/prizes.length;
@@ -4607,7 +4713,7 @@ function doSpin(){
       STORE.spinLog.push({date:today(),uid:currentUser?.id||'guest'});
       checkVipUpgrade(currentUser);
       saveState();
-      const _rp=(STORE.prizes||[]).filter(p=>p.benefit&&p.benefit.trim());
+      const _rp=_gamePrizes().filter(p=>p.benefit&&p.benefit.trim());
       recordDailyPrize(_rp.findIndex(x=>x.id===winner.id),_rp.length);
       setTimeout(()=>{const isLose=!winner.benefit||!winner.benefit.trim();if(!isLose)winSound();showResult(winner)},500);
     }
@@ -4660,21 +4766,30 @@ function showResult(winner){
   // 게임 도중 뒤로가기로 나간 뒤 지연 타이머가 발동한 경우 → 결과·쿠폰 발급 중단
   const _cur=window.currentScreenId;
   if(_cur!=='s-roulette'&&_cur!=='s-scratch'&&_cur!=='s-card'&&_cur!=='s-ladder'&&_cur!=='s-result')return;
+  // 🏆 1차에서 잭팟이 나왔으면 결과를 내지 않고 같은 게임을 한 번 더 돌린다
+  if(winner&&winner.sub&&winner.sub.length&&!_jpStage){
+    _enterJackpotStage(winner);
+    _restartGameForJackpot();
+    return;
+  }
+  const isJp=!!_jpStage;   // 2차 결과 = 잭팟 상품 (직원 확인 필요)
   const isLose=!winner.benefit||!winner.benefit.trim();
-  document.getElementById('res-emoji').textContent=isLose?'😢':'🎉';
-  document.getElementById('res-title').textContent=isLose?'아쉽게도 꽝이에요':winner.benefit+' 당첨!';
-  document.getElementById('res-sub').textContent=isLose?'내일 다시 도전해주세요':'쿠폰이 자동 발급되었습니다';
+  document.getElementById('res-emoji').textContent=isLose?'😢':(isJp?'🏆':'🎉');
+  document.getElementById('res-title').textContent=isLose?'아쉽게도 꽝이에요':(isJp?'🏆 잭팟! '+winner.benefit:winner.benefit+' 당첨!');
+  document.getElementById('res-sub').textContent=isLose?'내일 다시 도전해주세요':(isJp?'축하합니다! 직원에게 이 화면을 보여주세요':'쿠폰이 자동 발급되었습니다');
   const area=document.getElementById('res-coupon');
   if(!isLose){
     const cid=genId();
     const _gs=+winner.grantsStamp||0;
+    const _nm=isJp?('🏆 잭팟: '+winner.benefit):winner.benefit;
     // 스탬프 지급 상품은 자동 적립하지 않고, 직원이 확인 후 처리하는 쿠폰으로 발급한다(적립 남용 방지)
-    STORE.coupons.unshift({id:cid,uid:currentUser?.id||'guest',name:winner.benefit,benefit:winner.benefit,
-      expires:expDate(30),cond:_gs?'직원 확인 후 적립':'1인 1매',status:'available',created:today(),
-      ...(_gs?{staffCheck:true,grantsStamp:_gs}:{})});
+    STORE.coupons.unshift({id:cid,uid:currentUser?.id||'guest',name:_nm,benefit:winner.benefit,
+      expires:expDate(30),cond:_gs?'직원 확인 후 적립':(isJp?'직원 확인 후 제공':'1인 1매'),status:'available',created:today(),
+      ...(_gs?{staffCheck:true,grantsStamp:_gs}:{}),...(isJp?{staffCheck:true}:{})});
     saveState();
-    area.innerHTML=renderCouponCard({id:cid,name:winner.benefit,benefit:winner.benefit,expires:expDate(30)});
+    area.innerHTML=renderCouponCard({id:cid,name:_nm,benefit:winner.benefit,expires:expDate(30)});
   }else area.innerHTML='';
+  _exitJackpotStage();   // 결과를 냈으니 2차 단계 종료
   // 네이버 리뷰 링크 버튼 (메인게임 결과 — 연동된 경우 표시)
   const reviewLinkBtn=document.getElementById('extra-review-link-btn');
   if(reviewLinkBtn){
@@ -6604,7 +6719,17 @@ function renderRouletteAdmin(el){
   el.innerHTML=`
     <div class="card card-pad" style="border-color:var(--blue)">
       <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:10px">🎮 네이버 이벤트 게임 방식</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:4px">
+      <div onclick="setGameMode('dice')" style="padding:14px 12px;border-radius:14px;border:2px solid ${gm==='dice'?'var(--blue)':'var(--border)'};background:${gm==='dice'?'var(--blue-light)':'var(--white)'};cursor:pointer;position:relative;display:flex;align-items:center;gap:12px;margin-bottom:10px">
+        <div style="position:absolute;top:-7px;right:10px;background:var(--red);color:#fff;font-size:9px;font-weight:800;padding:2px 7px;border-radius:20px">추천</div>
+        <div style="font-size:30px">🎲</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:800;color:${gm==='dice'?'var(--blue)':'var(--t1)'}">주사위 던지기</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">기본 게임 · 잭팟 2차 추첨 · 미션으로 주사위 충전</div>
+        </div>
+        ${gm==='dice'?'<div style="font-size:18px;color:var(--blue)">✓</div>':''}
+      </div>
+      <div style="font-size:11px;color:var(--t4);margin-bottom:6px">또는 다른 게임으로 바꾸기</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:4px">
         <div onclick="setGameMode('roulette')" style="padding:10px 4px;border-radius:12px;border:2px solid ${gm==='roulette'?'var(--blue)':'var(--border)'};background:${gm==='roulette'?'var(--blue-light)':'var(--white)'};text-align:center;cursor:pointer">
           <div style="font-size:22px;margin-bottom:3px">🎡</div>
           <div style="font-size:11px;font-weight:700;color:${gm==='roulette'?'var(--blue)':'var(--t2)'}">룰렛</div>
@@ -6616,11 +6741,6 @@ function renderRouletteAdmin(el){
         <div onclick="setGameMode('ladder')" style="padding:10px 4px;border-radius:12px;border:2px solid ${gm==='ladder'?'var(--blue)':'var(--border)'};background:${gm==='ladder'?'var(--blue-light)':'var(--white)'};text-align:center;cursor:pointer">
           <div style="font-size:22px;margin-bottom:3px">🪜</div>
           <div style="font-size:11px;font-weight:700;color:${gm==='ladder'?'var(--blue)':'var(--t2)'}">사다리</div>
-        </div>
-        <div onclick="setGameMode('dice')" style="padding:10px 4px;border-radius:12px;border:2px solid ${gm==='dice'?'var(--blue)':'var(--border)'};background:${gm==='dice'?'var(--blue-light)':'var(--white)'};text-align:center;cursor:pointer;position:relative">
-          <div style="position:absolute;top:-7px;right:-3px;background:var(--red);color:#fff;font-size:8px;font-weight:800;padding:2px 5px;border-radius:20px">NEW</div>
-          <div style="font-size:22px;margin-bottom:3px">🎲</div>
-          <div style="font-size:11px;font-weight:700;color:${gm==='dice'?'var(--blue)':'var(--t2)'}">주사위</div>
         </div>
       </div>
       <div style="font-size:11px;color:var(--t4);margin-top:8px">${gm==='dice'?'🎲 주사위는 아래 전용 설정을 사용합니다':'상품·확률은 룰렛·복권·사다리가 아래 설정을 공유합니다'}</div>
