@@ -1071,14 +1071,16 @@ body.dark .dice-jackpot-banner{background:linear-gradient(160deg,#4A3A18,#3A2C10
   function renderLandingContact(){
     const el=document.getElementById('landing-contact-section');
     if(!el)return;
-    const k1url=_pconf('kakaoUrl','https://litt.ly/jangsa.doctor');
-    const k1label=_pconf('kakaoLabel','카카오톡 문의하기');
-    const k1sub=_pconf('kakaoSub','litt.ly/jangsa.doctor');
-    const k2url=_pconf('openKakaoUrl','https://open.kakao.com/me/jangsa_doctor');
-    const k2label=_pconf('openKakaoLabel','오픈카카오 문의');
-    const k2sub=_pconf('openKakaoSub','장사천재 김도겸 오픈채팅');
-    const footer=_pconf('footerCopy','© 2025 리뷰이벤트 플랫폼 by 장사천재 김도겸');
-    const footerSub=_pconf('footerSub','사업자등록: 문의 시 제공');
+    // 이 스크립트는 _pconf 정의(본 스크립트 블록)보다 먼저 실행되므로, 아직 없으면 기본값으로 그린다
+    const _p=(typeof _pconf==='function')?_pconf:(k,fallback)=>fallback;
+    const k1url=_p('kakaoUrl','https://litt.ly/jangsa.doctor');
+    const k1label=_p('kakaoLabel','카카오톡 문의하기');
+    const k1sub=_p('kakaoSub','litt.ly/jangsa.doctor');
+    const k2url=_p('openKakaoUrl','https://open.kakao.com/me/jangsa_doctor');
+    const k2label=_p('openKakaoLabel','오픈카카오 문의');
+    const k2sub=_p('openKakaoSub','장사천재 김도겸 오픈채팅');
+    const footer=_p('footerCopy','© 2025 리뷰이벤트 플랫폼 by 장사천재 김도겸');
+    const footerSub=_p('footerSub','사업자등록: 문의 시 제공');
     el.innerHTML=`
      <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,0.5);margin-bottom:16px;text-align:center">비즈니스 문의</div>
      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">
@@ -2253,6 +2255,12 @@ function migrateStore(s){
   }
   if(!s.diceGame.tiles||s.diceGame.tiles.length!==(s.diceGame.boardSize||20))s.diceGame.tiles=_diceBuildTiles(s.diceGame.prizes,s.diceGame.boardSize||20);
   if(!s.diceState)s.diceState={};
+  // 주기적 재접촉용 문자 템플릿 2종 (주사위 충전 알림 / 매장 이벤트 홍보)
+  if(!s.crmTemplates)s.crmTemplates={};
+  if(!s.crmTemplates.dice)s.crmTemplates.dice='(광고) {매장명}\n🎲 이번 주 주사위가 도착했어요!\n\n{고객명}님, 주사위 {주사위}개를 보내드렸어요.\n지금 굴리면 음료·사이드·식사권까지 당첨될 수 있어요!\n\n▶ 지금 굴리기\n{링크}\n\n당첨 상품은 매장 방문 시 사용하실 수 있어요 😊\n무료수신거부 : 080-500-4233';
+  if(!s.crmTemplates.promo)s.crmTemplates.promo='(광고) {매장명}\n🎁 이번 주 특별 이벤트 안내\n\n{고객명}님 안녕하세요!\n(여기에 이번 주 이벤트나 신메뉴 소식을 적어주세요)\n\n▶ 이벤트 참여하기\n{링크}\n\n오늘도 행복한 하루 보내세요!\n무료수신거부 : 080-500-4233';
+  // 사장님이 주 1회 주사위를 충전해주는 방식 — 충전 주기(일)
+  if(!s.diceRechargeDays)s.diceRechargeDays=7;
   // 쿠폰 사용 정책 — 발급은 후하게, 사용은 하루 N개로 제한해 1일 최대 지출을 확정한다
   if(!s.couponPolicy)s.couponPolicy={dailyUseLimit:2,unusedWarnAt:5};
   if(s.couponPolicy.dailyUseLimit===undefined)s.couponPolicy.dailyUseLimit=2;
@@ -5904,6 +5912,14 @@ function renderCustomersTab(el){
       <td style="padding:10px 8px;color:var(--blue);font-weight:600;white-space:nowrap;font-size:12px">${u.phone}</td>
       <td style="padding:10px 4px;text-align:center"><span class="badge-rank" style="font-size:10px">${r.emoji}${r.name}</span></td>
       <td style="padding:10px 4px;text-align:center;font-size:11px;color:${diffColor};font-weight:600;white-space:nowrap">${diffLabel}</td>
+      <td style="padding:10px 4px;text-align:center;white-space:nowrap">${(()=>{
+        const _st=(STORE.diceState||{})[u.id]||{};
+        const _d=daysSinceRecharge(u.id);
+        if(_d===null)return '<span class="li-badge badge-blue" style="font-size:10px">🎲 가능</span>';
+        return isRechargeReady(u.id)
+          ? `<span class="li-badge badge-blue" style="font-size:10px">🎲 가능</span>`
+          : `<span class="li-badge badge-gray" style="font-size:10px">${_d}일 전</span>`;
+      })()}</td>
       <td style="padding:10px 4px;text-align:center">${u.marketing?'<span class="li-badge badge-blue" style="font-size:10px">동의</span>':'<span class="li-badge badge-gray" style="font-size:10px">미동의</span>'}</td>
     </tr>`;
   }).join('');
@@ -5953,10 +5969,13 @@ function renderCustomersTab(el){
 
     <div id="bulk-action-bar" style="display:none;margin:0 16px 10px;padding:12px 14px;background:var(--blue-light);border-radius:12px;border:1.5px solid var(--blue)">
       <div style="font-size:13px;font-weight:700;color:var(--blue);margin-bottom:8px" id="bulk-count-label">0명 선택됨</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button onclick="bulkCopyMessages()" class="btn btn-blue btn-sm">📋 선택 고객 문구 전체 복사</button>
-        <button onclick="${isPremium()?'bulkSendSMS()':'showVipModal()'}" class="btn btn-light btn-sm">📱 고객에게 메시지 보내기</button>
-        ${isPremium()?'':'<div onclick="showVipModal()" style="cursor:pointer;display:flex;align-items:center;gap:3px;padding:5px 10px;background:rgba(249,115,22,0.08);border:1.5px solid #f97316;border-radius:8px"><span style="font-size:12px">👑</span><span style="font-size:11px;font-weight:800;color:#f97316">VIP</span></div>'}
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button onclick="${isPremium()?'bulkRechargeDice(1)':'showVipModal()'}" class="btn btn-sm" style="background:linear-gradient(160deg,#FFC46B,#FF8B42);color:#fff;font-weight:800;box-shadow:0 3px 10px -3px rgba(255,139,66,.6)">🎲 주사위 1개 충전 + 알림 문자${isPremium()?'':' 👑'}</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="${isPremium()?'bulkSendPromo()':'showVipModal()'}" class="btn btn-light btn-sm">📢 매장 이벤트 문자</button>
+          <button onclick="bulkCopyMessages()" class="btn btn-light btn-sm">📋 문구 복사</button>
+        </div>
+        <div style="font-size:11px;color:var(--t3);line-height:1.6">💡 주사위를 굴리려면 리뷰 미션을 해야 해서, 충전 문자 한 통이 <b>재방문 + 리뷰</b>로 이어져요. 최근 ${STORE.diceRechargeDays||7}일 내 충전한 고객은 자동으로 제외됩니다.</div>
       </div>
     </div>
 
@@ -5968,9 +5987,10 @@ function renderCustomersTab(el){
           <th style="padding:10px 8px;text-align:left;color:var(--t3);font-weight:700">연락처</th>
           <th style="padding:10px 4px;text-align:center;color:var(--t3);font-weight:700">등급</th>
           <th style="padding:10px 4px;text-align:center;color:var(--t3);font-weight:700">최근방문</th>
+          <th style="padding:10px 4px;text-align:center;color:var(--t3);font-weight:700">충전</th>
           <th style="padding:10px 4px;text-align:center;color:var(--t3);font-weight:700">수신</th>
         </tr></thead>
-        <tbody>${rows||'<tr><td colspan="6" style="padding:24px;text-align:center;color:var(--t4)">해당하는 고객이 없습니다</td></tr>'}</tbody>
+        <tbody>${rows||'<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--t4)">해당하는 고객이 없습니다</td></tr>'}</tbody>
       </table>
     </div>
     <div style="padding:0 16px 16px;font-size:11px;color:var(--t4);line-height:1.6">최근방문: 🟢 7일 이내 · 🟡 8~30일 · 🔴 30일 초과</div>
@@ -6037,6 +6057,64 @@ function bulkSendSMS(){
   const phones=users.map(u=>u.phone.replace(/-/g,'')).join(',');
   const tmpl=(STORE.crmTemplate||'').replace(/\{매장명\}/g,STORE.profile.name||'매장').replace(/\{고객명\}/g,'고객님').replace(/\{쿠폰명\}/g,'').replace(/\{쿠폰번호\}/g,'').replace(/\{유효기간\}/g,'');
   window.open(`sms:${phones}?body=${encodeURIComponent(tmpl)}`,'_self');
+  toast(`${users.length}명 문자 앱을 열었습니다. 전송해주세요 ✉️`);
+}
+
+/* ════════ 주기적 재접촉: 주사위 충전 + 문자 2종 ════════
+   사장님이 주 1회 고객에게 주사위를 충전해주고, 그 사실을 문자로 알려 다시 오게 만드는 흐름.
+   주사위를 굴리려면 리뷰 미션을 해야 하므로 '충전 → 문자 → 재방문 → 리뷰'가 한 줄로 이어진다. */
+function _crmFill(tpl,u,extra){
+  return (tpl||'')
+    .replace(/\{매장명\}/g,STORE.profile.name||'매장')
+    // 여러 명에게 한 번에 보낼 땐 개인화가 불가능하므로 '고객'으로 대체 (템플릿이 "{고객명}님" 형태라 '님' 중복 방지)
+    .replace(/\{고객명\}/g,(u&&u.name)||'고객')
+    .replace(/\{링크\}/g,buildStoreUrl(STORE_ID))
+    .replace(/\{주사위\}/g,String((extra&&extra.dice)||1))
+    .replace(/\{쿠폰명\}/g,'').replace(/\{쿠폰번호\}/g,'').replace(/\{유효기간\}/g,'');
+}
+// 마지막 충전 이후 경과일 (한 번도 안 했으면 null)
+function daysSinceRecharge(uid){
+  const st=STORE.diceState&&STORE.diceState[uid];
+  if(!st||!st.lastRecharge)return null;
+  return Math.floor((new Date(today())-new Date(st.lastRecharge))/86400000);
+}
+function isRechargeReady(uid){
+  const d=daysSinceRecharge(uid);
+  return d===null||d>=(STORE.diceRechargeDays||7);
+}
+// 선택 고객에게 주사위 지급 + 충전 알림 문자 앱 실행
+function bulkRechargeDice(amount){
+  const users=getSelectedUsers();
+  if(!users.length){toast('선택된 고객이 없습니다');return;}
+  const amt=Math.max(1,+amount||1);
+  const ready=users.filter(u=>isRechargeReady(u.id));
+  const skipped=users.length-ready.length;
+  if(!ready.length){
+    toast(`선택한 고객 모두 최근 ${STORE.diceRechargeDays||7}일 이내에 충전했어요`);
+    return;
+  }
+  if(!STORE.diceState)STORE.diceState={};
+  ready.forEach(u=>{
+    if(!STORE.diceState[u.id])STORE.diceState[u.id]={pos:0,dice:0,laps:0,missionsDone:[],againToday:0,lastDate:''};
+    const st=STORE.diceState[u.id];
+    st.dice=(st.dice||0)+amt;
+    st.lastRecharge=today();
+    st.rechargeCount=(st.rechargeCount||0)+1;
+  });
+  saveState();
+  const phones=ready.map(u=>u.phone.replace(/-/g,'')).join(',');
+  const body=_crmFill(STORE.crmTemplates&&STORE.crmTemplates.dice,null,{dice:amt});
+  window.open(`sms:${phones}?body=${encodeURIComponent(body)}`,'_self');
+  toast(`🎲 ${ready.length}명에게 주사위 ${amt}개 충전 완료!`+(skipped?` (${skipped}명은 최근 충전돼 제외)`:'')+' 문자 앱에서 전송해주세요');
+  renderCustomersTab(document.getElementById('admin-body'));
+}
+// 매장 이벤트/상품 홍보 문자 (주사위 충전 없음)
+function bulkSendPromo(){
+  const users=getSelectedUsers();
+  if(!users.length){toast('선택된 고객이 없습니다');return;}
+  const phones=users.map(u=>u.phone.replace(/-/g,'')).join(',');
+  const body=_crmFill(STORE.crmTemplates&&STORE.crmTemplates.promo,null,{});
+  window.open(`sms:${phones}?body=${encodeURIComponent(body)}`,'_self');
   toast(`${users.length}명 문자 앱을 열었습니다. 전송해주세요 ✉️`);
 }
 
@@ -7263,6 +7341,30 @@ function renderSettingsAdmin(el){
       <button class="btn btn-blue" onclick="saveCouponPolicy()">쿠폰 정책 저장</button>
     </div>
 
+    <div class="card card-pad" style="border-color:#FF8B42">
+      <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px">✉️ 재접촉 문자 템플릿 2종</div>
+      <div style="font-size:12px;color:var(--t3);margin-bottom:12px;line-height:1.65">
+        고객·연락처 탭에서 고객을 선택한 뒤 사용하는 문자 양식이에요.<br>
+        사용 변수: <b>{고객명} {매장명} {링크} {주사위}</b></div>
+
+      <div style="font-size:12.5px;font-weight:800;color:#B5551A;margin-bottom:6px">🎲 ① 주사위 충전 알림</div>
+      <div style="font-size:11.5px;color:var(--t3);margin-bottom:6px;line-height:1.6">주사위를 충전해주면서 보내는 문자예요. 굴리려면 리뷰 미션이 필요해서 재방문·리뷰로 이어져요.</div>
+      <textarea id="crm-tpl-dice" rows="9" oninput="document.getElementById('crm-dice-count').textContent=this.value.length" style="width:100%;border:1.5px solid var(--border);border-radius:11px;padding:12px 14px;font-size:13px;line-height:1.7;font-family:Noto Sans KR,sans-serif;background:var(--white);color:var(--t1);resize:vertical;outline:none">${((STORE.crmTemplates&&STORE.crmTemplates.dice)||'').replace(/</g,'&lt;')}</textarea>
+      <div style="font-size:11px;color:var(--t4);margin:6px 0 14px">현재 글자수: <span id="crm-dice-count">${((STORE.crmTemplates&&STORE.crmTemplates.dice)||'').length}</span>자</div>
+
+      <div style="font-size:12.5px;font-weight:800;color:var(--blue);margin-bottom:6px">📢 ② 매장 이벤트 안내</div>
+      <div style="font-size:11.5px;color:var(--t3);margin-bottom:6px;line-height:1.6">신메뉴·할인 같은 매장 소식을 알릴 때 쓰는 문자예요. 주사위는 충전되지 않아요.</div>
+      <textarea id="crm-tpl-promo" rows="9" oninput="document.getElementById('crm-promo-count').textContent=this.value.length" style="width:100%;border:1.5px solid var(--border);border-radius:11px;padding:12px 14px;font-size:13px;line-height:1.7;font-family:Noto Sans KR,sans-serif;background:var(--white);color:var(--t1);resize:vertical;outline:none">${((STORE.crmTemplates&&STORE.crmTemplates.promo)||'').replace(/</g,'&lt;')}</textarea>
+      <div style="font-size:11px;color:var(--t4);margin:6px 0 14px">현재 글자수: <span id="crm-promo-count">${((STORE.crmTemplates&&STORE.crmTemplates.promo)||'').length}</span>자</div>
+
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+        <span style="font-size:13px;color:var(--t2);font-weight:600">충전 주기</span>
+        <input type="number" id="crm-recharge-days" min="1" max="60" value="${STORE.diceRechargeDays||7}" style="width:70px;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-weight:700;text-align:center;background:var(--white);color:var(--t1);outline:none">
+        <span style="font-size:12px;color:var(--t3)">일 — 이 기간 내 충전한 고객은 자동 제외</span>
+      </div>
+      <button class="btn btn-blue" onclick="saveCrmTemplates()">문자 템플릿 저장</button>
+    </div>
+
     <div class="card card-pad" style="border-color:var(--yellow)">
       <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px">🏆 VIP 등급별 확정 혜택</div>
       <div style="font-size:12px;color:var(--t3);margin-bottom:14px;line-height:1.6">고객이 해당 방문 횟수에 도달하면 쿠폰이 자동 발급됩니다. 내용을 원하시는 대로 수정하세요.</div>
@@ -7315,6 +7417,15 @@ function previewCouponLimit(){
   el.innerHTML=lim
     ? `손님 한 명이 하루에 아무리 많이 당첨돼도<br><b style="font-size:16px;color:var(--blue)">최대 ${(avg*lim).toLocaleString()}원</b> 까지만 나갑니다<br><span style="font-size:11.5px;color:var(--t3)">(상품 쿠폰 평균 ${avg.toLocaleString()}원 × ${lim}개)</span>`
     : `<span style="color:#b45309;font-weight:700">⚠️ 무제한</span> — 하루 지출 상한이 없습니다.<br><span style="font-size:11.5px;color:var(--t3)">쌓인 쿠폰을 한 번에 모두 사용할 수 있어요.</span>`;
+}
+function saveCrmTemplates(){
+  if(!STORE.crmTemplates)STORE.crmTemplates={};
+  const d=document.getElementById('crm-tpl-dice'),p=document.getElementById('crm-tpl-promo'),r=document.getElementById('crm-recharge-days');
+  if(d)STORE.crmTemplates.dice=d.value;
+  if(p)STORE.crmTemplates.promo=p.value;
+  if(r)STORE.diceRechargeDays=Math.min(60,Math.max(1,+r.value||7));
+  saveState();
+  toast('문자 템플릿이 저장됐어요 ✉️');
 }
 function saveCouponPolicy(){
   const lim=Math.min(10,Math.max(0,+((document.getElementById('cp-daily-limit')||{}).value)||0));
