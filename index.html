@@ -289,6 +289,15 @@ body.dark .dice-jackpot-banner{background:linear-gradient(160deg,#4A3A18,#3A2C10
 .ddie i{background:linear-gradient(160deg,#4C9BFF,#2E7CFB);border-radius:50%;width:7px;height:7px;align-self:center;justify-self:center;
   box-shadow:0 1px 1px rgba(0,0,0,.2)}
 .ddie.spin{animation:diceTumble .45s linear infinite}
+/* 홈/랜딩 카드 헤드라인 옆에 붙는 정적 주사위 아이콘 — 한눈에 '주사위 게임'임을 알려주는 용도 */
+.hero-die{width:38px;height:38px;flex:none;background:linear-gradient(160deg,#ffffff,#EFEFF2);border-radius:11px;
+  display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:6px;gap:2px;
+  box-shadow:0 3px 0 rgba(0,0,0,.14),0 7px 12px -5px rgba(0,0,0,.32),inset 0 2px 0 rgba(255,255,255,.9);
+  animation:heroDieBob 2.4s ease-in-out infinite}
+.hero-die i{background:linear-gradient(160deg,#FF8B42,#E8621E);border-radius:50%;width:5px;height:5px;align-self:center;justify-self:center}
+.hero-die.d2{animation-delay:.35s}
+@keyframes heroDieBob{0%,100%{transform:rotate(var(--rot,0deg)) translateY(0)}50%{transform:rotate(var(--rot,0deg)) translateY(-4px)}}
+@media (prefers-reduced-motion:reduce){.hero-die{animation:none}}
 @keyframes diceTumble{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.ddie.spin{animation:none}}
 #dice-roll-btn{background:linear-gradient(180deg,#57A6FF,#2E7CFB);border:none;box-shadow:0 5px 0 #1E5FD0,0 10px 20px -5px rgba(46,124,251,.5),inset 0 1px 0 rgba(255,255,255,.3);
@@ -2624,6 +2633,14 @@ function restoreHomeHero(){
   hero.style.cssText=_heroCardOrigStyle;
   _heroCardOriginal=null;
 }
+// 헤드라인 옆에 붙이는 정적 주사위 2개 — 눈(pip)까지 그려서 스크롤 전에도 '주사위 게임'임이 바로 보이게
+function _heroDicePairHtml(){
+  const f=n=>(_DICE_PIPS[n]||[5]).map(p=>`<i style="grid-area:${Math.ceil(p/3)}/${((p-1)%3)+1}"></i>`).join('');
+  return `<div style="display:flex;gap:5px;flex:none">`+
+    `<div class="hero-die" style="--rot:-11deg">${f(5)}</div>`+
+    `<div class="hero-die d2" style="--rot:9deg">${f(3)}</div>`+
+    `</div>`;
+}
 function renderDiceHomePreview(heroCard){
   const cfg=STORE.diceGame;
   if(!heroCard||!cfg)return;
@@ -2639,7 +2656,10 @@ function renderDiceHomePreview(heroCard){
       `<div style="font-size:12px;color:rgba(255,255,255,.95);font-weight:800">🎲 주사위 이벤트 · 꽝 없음</div>`+
       `<span style="background:rgba(0,0,0,.3);color:#fff;font-size:12px;font-weight:800;padding:4px 11px;border-radius:20px">🎲 ${st?st.dice:0}</span>`+
     `</div>`+
-    `<div style="font-size:21px;font-weight:900;color:#fff;line-height:1.28;text-shadow:0 2px 10px rgba(0,0,0,.28)">굴리면 무조건 당첨!<br>지금 확인해보세요 🎁</div>`+
+    `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">`+
+      `<div style="font-size:21px;font-weight:900;color:#fff;line-height:1.28;text-shadow:0 2px 10px rgba(0,0,0,.28)">굴리면 무조건 당첨!<br>지금 확인해보세요 🎁</div>`+
+      _heroDicePairHtml()+
+    `</div>`+
     (dist!=null?`<div style="font-size:12.5px;color:#fff;font-weight:800;margin-top:4px;text-shadow:0 1px 6px rgba(0,0,0,.3)">🏆 잭팟까지 ${dist}칸 남았어요</div>`:'')+
     _diceMiniBoard(startK,7,0.78)+
     `<button class="btn cta-pulse" style="background:#fff;color:#B5551A;font-weight:900;padding:14px;margin-top:2px">`+
@@ -3192,7 +3212,10 @@ function renderLandingDiceCard(){
       `<div style="font-size:12px;color:rgba(255,255,255,.95);font-weight:800">🎲 진행 중인 주사위 이벤트</div>`+
       `<span style="background:rgba(0,0,0,.3);color:#fff;font-size:12px;font-weight:800;padding:4px 11px;border-radius:20px">🎲 ${st.dice}</span>`+
     `</div>`+
-    `<div style="font-size:20px;font-weight:900;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.28)">${currentUser.name}님, 이어서 하세요!</div>`+
+    `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">`+
+      `<div style="font-size:20px;font-weight:900;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.28)">${currentUser.name}님, 이어서 하세요!</div>`+
+      _heroDicePairHtml()+
+    `</div>`+
     (dist!=null?`<div style="font-size:12.5px;color:#fff;font-weight:800;margin-top:3px;text-shadow:0 1px 6px rgba(0,0,0,.3)">🏆 잭팟까지 ${dist}칸 남았어요</div>`:'')+
     _diceMiniBoard(st.pos,7,0.78)+
     `<button class="btn cta-pulse" style="background:#fff;color:#B5551A;font-weight:900;padding:14px;margin-top:2px" onclick="show('s-dice')">`+
