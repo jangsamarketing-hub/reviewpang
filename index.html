@@ -1120,13 +1120,14 @@ body.dark .dice-jackpot-banner{background:linear-gradient(160deg,#4A3A18,#3A2C10
 
 <!-- ══════════ 랜딩 ══════════ -->
 <div class="scr" id="s-landing">
-  <div id="landing-hero" style="background:var(--t1);padding:72px 28px 44px;text-align:center;position:relative;background-size:cover;background-position:center">
+  <div id="landing-hero" style="padding:max(env(safe-area-inset-top),24px) 24px 4px;text-align:center;position:relative;overflow:hidden">
     <div id="landing-overlay" style="position:absolute;inset:0;background:transparent;pointer-events:none"></div>
-    <button class="tb-icon-btn" style="position:absolute;top:max(env(safe-area-inset-top),20px);right:20px;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff;z-index:2" onclick="toggleDark()" id="dark-toggle-btn">🌙</button>
+    <button class="tb-icon-btn" style="position:absolute;top:max(env(safe-area-inset-top),20px);right:20px;z-index:3" onclick="toggleDark()" id="dark-toggle-btn">🌙</button>
     <div style="position:relative;z-index:1">
-      <div style="font-size:76px;margin-bottom:20px" id="landing-emoji">🍽️</div>
-      <div style="font-size:30px;font-weight:900;color:#fff;letter-spacing:-.5px;margin-bottom:10px;text-shadow:0 2px 12px rgba(0,0,0,.4)" id="landing-name">맛있는집</div>
-      <div style="font-size:15px;color:rgba(255,255,255,.85);line-height:1.5;text-shadow:0 1px 8px rgba(0,0,0,.4)">방문해주셔서 감사합니다</div>
+      <div style="font-size:34px;margin-bottom:6px" id="landing-emoji">🍽️</div>
+      <div style="font-size:27px;font-weight:900;letter-spacing:-.5px;margin-bottom:6px" id="landing-name">맛있는집</div>
+      <div style="font-size:14px;line-height:1.5" id="landing-greet">방문해주셔서 감사합니다</div>
+      <div id="landing-hero-board"></div>
     </div>
   </div>
   <div class="scroll" style="background:var(--bg);padding:28px 20px">
@@ -3184,16 +3185,24 @@ function renderLanding(){
   document.title=STORE.profile.name+' | 리뷰 이벤트';
   document.getElementById('landing-emoji').textContent=STORE.profile.emoji||'🍽️';
   document.getElementById('landing-name').textContent=STORE.profile.name;
+  // 히어로 배경은 매장 사진 대신 실제 게임 보드 — 사진 업로드를 없앤 뒤의 기본 비주얼이다
   const hero=document.getElementById('landing-hero');
-  const overlay=document.getElementById('landing-overlay');
-  if(STORE.profile.bgImage){
-    hero.style.backgroundImage=`url(${STORE.profile.bgImage})`;
-    hero.style.aspectRatio='1/1';
-    overlay.style.background='rgba(0,0,0,.45)';
-  }else{
-    hero.style.backgroundImage='';
-    hero.style.aspectRatio='';
-    overlay.style.background='transparent';
+  hero.style.background=document.body.classList.contains('dark')
+    ? 'linear-gradient(180deg,#2A2019 0%,#221A14 60%,var(--bg) 100%)'
+    : 'linear-gradient(180deg,#FFF3DF 0%,#FFE3C4 55%,var(--bg) 100%)';
+  document.getElementById('landing-name').style.color='var(--t1)';
+  document.getElementById('landing-greet').style.color='var(--t3)';
+  const board=document.getElementById('landing-hero-board');
+  if(board){
+    // 진행 중인 고객에겐 아래 '이어서 하기' 카드가 본인 위치를 담은 보드를 이미 보여주므로
+    // 히어로 보드는 감춰 같은 그림이 두 번 겹치지 않게 한다
+    const cardShown=!!(currentUser&&STORE.diceGame&&(STORE.gameMode||'roulette')==='dice');
+    if(cardShown){board.innerHTML='';}
+    else{
+      const SC=0.9,W=Math.round(((_DT_SEG-1)*_DT_X+66)*SC);
+      board.innerHTML=`<div style="display:flex;justify-content:center;margin-top:6px">`+
+        `<div style="width:${W}px">${_diceMiniBoard(0,8,SC)}</div></div>`;
+    }
   }
   renderStoreSwitcher();
 }
