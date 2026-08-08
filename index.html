@@ -1774,7 +1774,7 @@ body.dark .dice-jackpot-banner{background:linear-gradient(160deg,#4A3A18,#3A2C10
     <div style="font-size:13px;font-weight:800;color:var(--t1);margin:16px 0 8px">📝 내 리뷰 초안</div>
     <div id="dice-review-draft" class="rv-draft"></div>
     <div style="background:var(--blue-light);border-radius:10px;padding:10px 12px;font-size:11.5px;color:var(--t2);line-height:1.6;margin-top:10px">
-      💡 설문 답변으로 <b>사람마다 다른 문장</b>이 만들어져요.<br>똑같은 리뷰가 반복되면 네이버가 광고로 판단할 수 있거든요.</div>
+      💡 설문 답변으로 <b>사람마다 다른 문장</b>이 만들어져요.<br>똑같은 리뷰가 반복되면 플랫폼이 광고로 판단할 수 있거든요.</div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">
       <button class="btn btn-ghost" onclick="regenDiceReview()">🔀 다른 문장으로 바꾸기</button>
       <button class="btn btn-blue" onclick="copyDiceReview()">📋 복사하기</button>
@@ -2282,6 +2282,12 @@ function migrateStore(s){
     s.diceGame.tiles=null;
   }
   if(!s.diceGame.tiles||s.diceGame.tiles.length!==(s.diceGame.boardSize||20))s.diceGame.tiles=_diceBuildTiles(s.diceGame.prizes,s.diceGame.boardSize||20);
+  // 네이버 클립 미션 추가 (기존 매장에도 카카오맵 뒤에 끼워넣기 — 다른 미션 순서/설정은 건드리지 않음)
+  if(s.diceGame.missions&&!s.diceGame.missions.some(m=>m.id==='clip')){
+    const kIdx=s.diceGame.missions.findIndex(m=>m.id==='kakao');
+    s.diceGame.missions.splice(kIdx>=0?kIdx+1:s.diceGame.missions.length,0,
+      {id:'clip',label:'네이버 클립 영상',dice:1,verify:'dwell',premium:false});
+  }
   if(!s.diceState)s.diceState={};
   // 주기적 재접촉용 문자 템플릿 2종 (주사위 충전 알림 / 매장 이벤트 홍보)
   if(!s.crmTemplates)s.crmTemplates={};
@@ -2342,6 +2348,7 @@ function _diceDefaultGame(){
       {id:'survey',label:'만족도 설문',dice:1,verify:'internal',premium:false},
       {id:'naver',label:'네이버 영수증 리뷰',dice:1,verify:'dwell',premium:false,photoBonus:1},
       {id:'kakao',label:'카카오맵 리뷰',dice:1,verify:'dwell',premium:false},
+      {id:'clip',label:'네이버 클립 영상',dice:1,verify:'dwell',premium:false},
       {id:'google',label:'구글맵 리뷰',dice:1,verify:'dwell',premium:true},
       {id:'insta',label:'인스타 스토리',dice:1,verify:'dwell',premium:true}
     ],
@@ -2523,6 +2530,24 @@ function _penguinSvg(size){
   </svg>`;
 }
 // 홈·대기화면에 넣을 실제 보드 축소판 (본판과 동일한 기하·키캡·상품 라벨)
+// 홈·랜딩 카드에서 보드 옆 여백에 넣는 잭팟 상품 목록 — "이거 받을 수도 있겠다"는 CTA용
+function _diceJackpotListHtml(){
+  const cfg=STORE.diceGame;
+  const jp=cfg&&cfg.prizes&&cfg.prizes.find(p=>p.type==='jackpot');
+  if(!jp||!jp.sub||!jp.sub.length)return '';
+  const items=jp.sub.slice().sort((a,b)=>(b.cost||0)-(a.cost||0));
+  const top=items[0],rest=items.slice(1,5);
+  return `<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;padding-top:2px">`+
+    `<div style="font-size:10px;font-weight:800;color:rgba(255,255,255,.9);letter-spacing:.2px">🏆 잭팟 상품</div>`+
+    `<div style="background:rgba(0,0,0,.24);border-radius:11px;padding:8px 9px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)">`+
+      `<div style="font-size:12.5px;font-weight:900;color:#fff;line-height:1.3">💎 ${top.label}</div>`+
+      `<div style="font-size:9px;color:rgba(255,255,255,.75);margin-top:1px">최고 상품</div>`+
+    `</div>`+
+    `<div style="font-size:10.5px;color:rgba(255,255,255,.95);line-height:1.85;font-weight:700">`+
+      rest.map(s=>`🎫 ${s.label}`).join('<br>')+
+    `</div>`+
+  `</div>`;
+}
 function _diceMiniBoard(startPos,count,scale){
   const cfg=STORE.diceGame;
   if(!cfg)return '';
@@ -2661,7 +2686,10 @@ function renderDiceHomePreview(heroCard){
       _heroDicePairHtml()+
     `</div>`+
     (dist!=null?`<div style="font-size:12.5px;color:#fff;font-weight:800;margin-top:4px;text-shadow:0 1px 6px rgba(0,0,0,.3)">🏆 잭팟까지 ${dist}칸 남았어요</div>`:'')+
-    _diceMiniBoard(startK,7,0.78)+
+    `<div style="display:flex;gap:10px;align-items:flex-start;margin-top:2px">`+
+      `<div style="width:172px;flex:none">${_diceMiniBoard(startK,7,0.78)}</div>`+
+      _diceJackpotListHtml()+
+    `</div>`+
     `<button class="btn cta-pulse" style="background:#fff;color:#B5551A;font-weight:900;padding:14px;margin-top:2px">`+
       `${st&&st.dice>0?'🎲 굴리러 가기':'🎲 주사위 받고 시작하기'}</button>`;
 }
@@ -2784,6 +2812,7 @@ function _diceMissionUrl(id){
   const events=STORE.events||[];
   if(id==='naver')return STORE.naverReviewUrl||(STORE.naverLinked?STORE.profile?.naverUrl:'')||'';
   if(id==='kakao')return (events.find(e=>e.platform==='kakao'&&e.link)||{}).link||STORE.profile.kakaoReviewUrl||'';
+  if(id==='clip')return STORE.profile.naverClipUrl||'';
   if(id==='google')return (events.find(e=>e.platform==='google'&&e.link)||{}).link||STORE.profile.googleReviewUrl||'';
   if(id==='insta')return (events.find(e=>e.platform==='instagram'&&e.link)||{}).link||STORE.profile.instagramUrl||'';
   return '';
@@ -2809,8 +2838,9 @@ function openDiceMissions(){
     const locked=m.premium&&!isPremium();
     const isNext=!done&&!locked&&!nextFound;
     if(isNext)nextFound=true;
-    const icon=done?'✅':locked?'🔒':(m.verify==='internal'?'📝':m.id==='naver'?'🟢':m.id==='kakao'?'💛':m.id==='google'?'🔵':'📸');
-    const sub=done?'오늘 완료했어요':locked?'사장님 플랜 업그레이드가 필요해요':(m.id==='survey'?'30초면 끝나요 · 가장 쉬워요':'문구를 만들어 드려요');
+    const _mIcons={naver:'🟢',kakao:'💛',clip:'🎬',google:'🔵',insta:'📸'};
+    const icon=done?'✅':locked?'🔒':(m.verify==='internal'?'📝':(_mIcons[m.id]||'🎁'));
+    const sub=done?'오늘 완료했어요':locked?'사장님 플랜 업그레이드가 필요해요':(m.id==='survey'?'30초면 끝나요 · 가장 쉬워요':m.id==='clip'?'짧은 영상으로 남겨주세요':'문구를 만들어 드려요');
     const click=done?'':locked?'showVipModal()':('startDiceMission(\''+m.id+'\')');
     return `<div class="dmission${isNext?' focus':''}${done?' done':''}${locked?' lock':''}" onclick="${click}">`+
       `<span class="dm-ic">${icon}</span><span class="dm-tx">${m.label}<small>${sub}</small></span>`+
@@ -2826,6 +2856,7 @@ function startDiceMission(id){
   if(m.premium&&!isPremium()){showVipModal();return;}
   closeDiceMissions();
   if(m.verify==='internal'){_diceMissionActive=id;show('s-survey');return;}
+  if(id==='clip'){openDiceDwell(id);return;} // 영상 미션은 문구 조립 없이 바로 체류시간 검증
   openDiceReviewBuilder(id); // 문구를 만들어 준 뒤 → 외부 이동 → 체류시간 검증
 }
 /* ── 🎲 리뷰 문구 조립기 ──
@@ -2846,15 +2877,41 @@ const _RV_INTRO={
   '지난번에 방문':['재방문했어요.','전에 왔다가 또 갔습니다.']
 };
 const _RV_FALLBACK_INTRO=['우연히 들렀는데요,','예전부터 궁금했던 곳인데요,','근처에 볼일이 있어 방문했어요.'];
+/* 카테고리별로 mid(무난)/high(강한 표현) 두 톤을 나눠, 설문 점수가 높을수록
+   high 표현이 더 자주 뽑히게 한다 — "10점 만점에 10점"과 "8점"이 같은 문장으로 안 나오게. */
 const _RV_PRAISE={
-  taste:['음식이 정말 맛있었어요.','맛이 기대 이상이었어요.','메뉴가 하나같이 맛있더라구요.'],
-  amount:['양도 푸짐했어요.','생각보다 양이 많아서 좋았어요.'],
-  speed:['음식도 빨리 나왔어요.','주문하고 금방 나와서 좋았습니다.'],
-  kind:['사장님이 정말 친절하셨어요.','직원분들이 친절하게 챙겨주셨어요.'],
-  clean:['매장도 깔끔했어요.','매장이 청결해서 좋았습니다.'],
-  price:['가격 대비 만족도가 높아요.','가성비가 좋더라구요.'],
-  mood:['분위기도 편안했어요.','매장 분위기가 좋았습니다.'],
-  parking:['주차도 편했어요.','주차 공간이 넉넉해서 좋았어요.']
+  taste:{
+    mid:['음식이 정말 맛있었어요.','맛이 기대 이상이었어요.','메뉴가 하나같이 맛있더라구요.','간이 딱 맞았어요.','재료가 신선한 게 느껴졌어요.'],
+    high:['풍미가 미쳤어요.','미친 맛이에요 진짜.','입에서 살살 녹아요.','맛집 인정입니다.','한 입 먹자마자 반했어요.','계속 생각나는 맛이에요.']
+  },
+  amount:{
+    mid:['양도 푸짐했어요.','생각보다 양이 많아서 좋았어요.','양이 넉넉한 편이에요.'],
+    high:['양 많고 가심비 최고예요.','푸짐해서 배터지게 먹었어요.','양 보고 두 번 놀랐어요.','가성비 아니라 가심비예요.']
+  },
+  speed:{
+    mid:['음식도 빨리 나왔어요.','주문하고 금방 나와서 좋았습니다.','웨이팅이 길지 않았어요.'],
+    high:['총알같이 나왔어요.','웨이팅 없이 바로 먹었어요.','점심시간을 아껴준 스피드였어요.','여긴 진짜 빨리 나와요.']
+  },
+  kind:{
+    mid:['사장님이 정말 친절하셨어요.','직원분들이 친절하게 챙겨주셨어요.','서비스가 좋았어요.'],
+    high:['가족처럼 챙겨주셨어요.','응대에 감동받았어요.','세심하게 배려해주셨어요.','배려받는 느낌이 들었어요.']
+  },
+  clean:{
+    mid:['매장도 깔끔했어요.','매장이 청결해서 좋았습니다.'],
+    high:['매장이 반짝반짝했어요.','위생 관리가 철저해 보였어요.','테이블까지 꼼꼼하게 관리되고 있었어요.']
+  },
+  price:{
+    mid:['가격 대비 만족도가 높아요.','가성비가 좋더라구요.'],
+    high:['이 가격에 이 퀄리티라니 놀랐어요.','가성비 갑입니다.']
+  },
+  mood:{
+    mid:['분위기도 편안했어요.','매장 분위기가 좋았습니다.'],
+    high:['분위기가 완전 제 취향이었어요.','인테리어까지 예뻤어요.']
+  },
+  parking:{
+    mid:['주차도 편했어요.','주차 공간이 넉넉해서 좋았어요.'],
+    high:['주차 걱정 없이 편하게 다녀왔어요.']
+  }
 };
 const _RV_OUTRO=['또 방문할 것 같아요 :)','재방문 의사 100%입니다!','다음에 또 오려구요~','주변에도 추천하고 싶네요 👍'];
 const _RV_CHIPS=[{k:'taste',l:'맛있어요'},{k:'kind',l:'친절해요'},{k:'clean',l:'깨끗해요'},
@@ -2862,10 +2919,24 @@ const _RV_CHIPS=[{k:'taste',l:'맛있어요'},{k:'kind',l:'친절해요'},{k:'cl
   {k:'speed',l:'빨리나와요'},{k:'parking',l:'주차편해요'}];
 const _RV_MATRIX={'가격대비 맛':'taste','가격대비 양':'amount','조리 시간':'speed','직원 친절도':'kind','매장 청결도':'clean'};
 let _rvPicked=new Set(),_rvMissionId=null,_rvDraft='';
+let _rvScores={}; // 카테고리 키 → 설문 매트릭스 점수(1~10), 수동 선택 칩엔 값 없음
 function _rvPick(a){return a[Math.floor(Math.random()*a.length)];}
 function _rvLatestSurvey(){
   const list=(STORE.surveys||[]).filter(s=>s.uid===(currentUser&&currentUser.id));
   return list.length?list[list.length-1]:null;
+}
+// 점수가 높을수록 high(강한 표현) 풀에서 뽑힐 확률을 올린다
+function _rvTierPick(key){
+  const bank=_RV_PRAISE[key];
+  if(!bank)return '';
+  const score=_rvScores[key];
+  let highChance;
+  if(score>=9)highChance=0.75;
+  else if(score>=7)highChance=0.4;
+  else if(score>=1)highChance=0.1;   // 낮은 점수인데 칩으로 남겨둔 경우엔 무난한 표현 위주
+  else highChance=0.35;              // 설문 미연동, 수동 선택 — 적당히 섞어서 다양성 확보
+  const pool=Math.random()<highChance?bank.high:bank.mid;
+  return _rvPick(pool&&pool.length?pool:bank.mid);
 }
 function _rvGenerate(){
   const sv=_rvLatestSurvey();
@@ -2877,7 +2948,7 @@ function _rvGenerate(){
     });
     if(hits.length)intro=_rvPick(_RV_INTRO[_rvPick(hits)]);
   }
-  const lines=Array.from(_rvPicked).map(k=>_rvPick(_RV_PRAISE[k]||[]));
+  const lines=Array.from(_rvPicked).map(k=>_rvTierPick(k));
   for(let i=lines.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[lines[i],lines[j]]=[lines[j],lines[i]];}
   const body=lines.length?lines.join(' '):'전체적으로 만족스러웠어요.';
   return intro+' '+body+'\n'+_rvPick(_RV_OUTRO);
@@ -2903,11 +2974,17 @@ function openDiceReviewBuilder(id){
   if(!url){toast('사장님이 아직 리뷰 링크를 등록하지 않았어요');return;}
   _rvMissionId=id;
   _rvPicked=new Set();
+  _rvScores={};
   const sv=_rvLatestSurvey();
-  if(sv&&sv.answers){ // 설문 매트릭스에서 8점 이상 준 항목은 자동 선택
+  if(sv&&sv.answers){ // 설문 매트릭스 점수를 그대로 저장해두고, 8점 이상 준 항목은 칩도 자동 선택
     Object.values(sv.answers).forEach(v=>{
       if(v&&typeof v==='object'&&!Array.isArray(v)){
-        Object.keys(v).forEach(item=>{const key=_RV_MATRIX[item];if(key&&+v[item]>=8)_rvPicked.add(key);});
+        Object.keys(v).forEach(item=>{
+          const key=_RV_MATRIX[item];if(!key)return;
+          const score=+v[item];
+          _rvScores[key]=score;
+          if(score>=8)_rvPicked.add(key);
+        });
       }
     });
   }
@@ -3217,7 +3294,10 @@ function renderLandingDiceCard(){
       _heroDicePairHtml()+
     `</div>`+
     (dist!=null?`<div style="font-size:12.5px;color:#fff;font-weight:800;margin-top:3px;text-shadow:0 1px 6px rgba(0,0,0,.3)">🏆 잭팟까지 ${dist}칸 남았어요</div>`:'')+
-    _diceMiniBoard(st.pos,7,0.78)+
+    `<div style="display:flex;gap:10px;align-items:flex-start;margin-top:2px">`+
+      `<div style="width:172px;flex:none">${_diceMiniBoard(st.pos,7,0.78)}</div>`+
+      _diceJackpotListHtml()+
+    `</div>`+
     `<button class="btn cta-pulse" style="background:#fff;color:#B5551A;font-weight:900;padding:14px;margin-top:2px" onclick="show('s-dice')">`+
       `${st.dice>0?'🎲 게임하러 가기':'🎲 주사위 받으러 가기'}</button>`+
     `</div>`;
@@ -7425,6 +7505,7 @@ function renderSettingsAdmin(el){
       <div class="field" style="margin-bottom:14px"><label>카카오 채팅 URL (당첨 내역 전송용) <span style="font-size:11px;color:var(--t3)">선택</span></label><input id="st-kakao-chat" value="${(STORE.profile.kakaoChatUrl||'').replace(/"/g,'&quot;')}" placeholder="https://pf.kakao.com/_xxxxx/chat"><div style="font-size:11px;color:var(--t4);margin-top:4px">설정하면 당첨 결과 화면에 '📸 당첨내역 사진보내고 상품받기' 버튼이 나타납니다.</div></div>
       <div style="font-size:12px;font-weight:700;color:var(--t2);margin:16px 0 10px;padding-top:14px;border-top:1px solid var(--border2)">📝 리뷰 링크 설정 <span style="font-size:11px;font-weight:400;color:var(--t3)">— 고객 '리뷰 작성하러 가기' 버튼에 표시</span></div>
       <div class="field"><label>카카오맵 리뷰 URL <span style="font-size:11px;color:var(--t3)">선택</span></label><input id="st-kakao-review" value="${(STORE.profile.kakaoReviewUrl||'').replace(/"/g,'&quot;')}" placeholder="https://place.map.kakao.com/..."></div>
+      <div class="field"><label>네이버 클립 URL <span style="font-size:11px;color:var(--t3)">선택</span></label><input id="st-naver-clip" value="${(STORE.profile.naverClipUrl||'').replace(/"/g,'&quot;')}" placeholder="https://m.place.naver.com/.../clip 또는 업로드 링크"></div>
       <div class="field"><label>인스타그램 URL <span style="font-size:11px;color:var(--t3)">선택</span></label><input id="st-instagram" value="${(STORE.profile.instagramUrl||'').replace(/"/g,'&quot;')}" placeholder="https://instagram.com/계정명"></div>
       <div class="field" style="margin-bottom:14px"><label>구글 지도 리뷰 URL <span style="font-size:11px;color:var(--t3)">선택</span></label><input id="st-google-review" value="${(STORE.profile.googleReviewUrl||'').replace(/"/g,'&quot;')}" placeholder="https://search.google.com/local/writereview?placeid=..."></div>
       <div class="field"><label>주소</label><input id="st-addr" value="${(STORE.profile.address||'').replace(/"/g,'&quot;')}"></div>
@@ -7705,6 +7786,7 @@ function saveStoreSettings(){
   STORE.profile.kakaoUrl=document.getElementById('st-kakao').value.trim();
   STORE.profile.kakaoChatUrl=(document.getElementById('st-kakao-chat')?.value||'').trim();
   STORE.profile.kakaoReviewUrl=(document.getElementById('st-kakao-review')?.value||'').trim();
+  STORE.profile.naverClipUrl=(document.getElementById('st-naver-clip')?.value||'').trim();
   STORE.profile.googleReviewUrl=(document.getElementById('st-google-review')?.value||'').trim();
   STORE.profile.instagramUrl=(document.getElementById('st-instagram')?.value||'').trim();
   STORE.profile.address=document.getElementById('st-addr').value.trim();
