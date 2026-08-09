@@ -380,120 +380,65 @@ body.dark .dice-side-jp .dsj-item{background:linear-gradient(160deg,#4A3A18,#3A2
 <div class="scr" id="s-notfound">
  <div class="scroll" style="background:#F7F6F3;padding:0;display:block">
 
-  <!-- ① HERO — 2개 겹친 폰 목업 (iPhone 스타일) -->
-  <section style="background:#0D1B2A;overflow:hidden">
-   <div style="display:flex;align-items:flex-end">
-    <div style="flex:1;min-width:0;padding:44px 10px 36px 22px">
-     <div id="fn-hero-eyebrow" style="font-size:10px;font-weight:600;color:rgba(255,107,0,0.85);letter-spacing:2px;margin-bottom:12px;text-transform:uppercase">AEO · GEO · AI 검색 시대</div>
-     <div id="fn-hero-title" style="font-size:26px;font-weight:900;color:#fff;line-height:1.2;letter-spacing:-1px;margin-bottom:10px">AI 시대,<br>더 이상<br><span style="color:#FF6B00">검색만</span><br>하지 않습니다</div>
-     <div id="fn-hero-sub" style="font-size:11.5px;color:rgba(255,255,255,0.4);line-height:1.7;margin-bottom:20px">리뷰, 아직도 말로만<br>제안하시나요?<br>게임이 자연스럽게<br>리뷰로 이어집니다</div>
-     <button onclick="show('s-owner-signup')" style="width:100%;padding:13px 8px;background:linear-gradient(135deg,#FF6B00,#FF8C00);border:none;border-radius:13px;font-size:12.5px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;box-shadow:0 8px 24px rgba(255,107,0,0.42)">무료로 시작하기 →</button>
-     <div style="font-size:9px;color:rgba(255,255,255,0.18);margin-top:8px">네이버 URL만으로 · 5분 완성</div>
-    </div>
-   <div style="flex-shrink:0;width:192px;position:relative;height:460px;overflow:hidden">
+  <!-- ① HERO — 브랜드 세계(따뜻한 오렌지 + 핑크팽귄)로 통일. 고객이 매장에서 보는 화면과 같은 톤이라
+       사장님이 "우리 손님이 이걸 본다"를 즉시 상상할 수 있게 한다. -->
+  <section style="position:relative;overflow:hidden;background:
+      radial-gradient(900px 520px at 78% 6%, rgba(255,244,214,.55), rgba(255,244,214,0) 58%),
+      linear-gradient(158deg,#FFB03A 0%,#FF8A3D 46%,#FF6B3D 100%);padding:34px 22px 30px">
 
-    <!-- 뒤 폰: 리뷰 유도 화면 (왼쪽) -->
-    <div style="position:absolute;left:-20px;top:48px;transform:rotate(-11deg) translateZ(0);width:176px;z-index:1;
-      background:linear-gradient(170deg,#3c3c3e 0%,#1c1c1e 55%);
-      border-radius:44px;padding:8px;
-      box-shadow:inset 0 1px 0 rgba(255,255,255,0.14),inset 0 -1px 0 rgba(0,0,0,0.5),0 32px 80px rgba(0,0,0,0.85),0 8px 24px rgba(0,0,0,0.5)">
-     <!-- Dynamic Island -->
-     <div style="display:flex;justify-content:center;padding:5px 0 3px">
-      <div style="width:88px;height:24px;background:#000;border-radius:15px"></div>
-     </div>
-     <!-- Status Bar -->
-     <div style="display:flex;justify-content:space-between;align-items:center;padding:0 13px 5px">
-      <span style="font-size:8.5px;font-weight:700;color:#fff;letter-spacing:0">9:41</span>
-      <div style="display:flex;align-items:center;gap:3px">
-       <svg width="12" height="9" viewBox="0 0 12 9" style="display:block"><rect x="0" y="4" width="2.2" height="5" rx="0.6" fill="white" opacity="0.45"/><rect x="3.3" y="2.5" width="2.2" height="6.5" rx="0.6" fill="white" opacity="0.7"/><rect x="6.6" y="1" width="2.2" height="8" rx="0.6" fill="white" opacity="0.9"/><rect x="9.8" y="0" width="2.2" height="9" rx="0.6" fill="white"/></svg>
-       <svg width="13" height="9" viewBox="0 0 13 9" style="display:block"><path d="M6.5 2.2C4.4 2.2 2.5 3.1 1.1 4.5L2.4 5.8C3.5 4.7 4.9 4 6.5 4C8.1 4 9.5 4.7 10.6 5.8L11.9 4.5C10.5 3.1 8.6 2.2 6.5 2.2Z" fill="white" opacity="0.6"/><path d="M6.5 5.2C5.3 5.2 4.3 5.7 3.5 6.5L6.5 9.5L9.5 6.5C8.7 5.7 7.7 5.2 6.5 5.2Z" fill="white"/></svg>
-       <div style="width:17px;height:8.5px;border-radius:2.5px;border:1px solid rgba(255,255,255,0.55);position:relative;display:flex;align-items:center;padding:1.5px;box-sizing:border-box">
-        <div style="height:100%;width:78%;background:#4ade80;border-radius:1px"></div>
-        <div style="position:absolute;right:-3.5px;top:50%;transform:translateY(-50%);width:2.5px;height:4.5px;background:rgba(255,255,255,0.45);border-radius:0 1.5px 1.5px 0"></div>
+   <!-- 은은한 장식 (주사위·반짝임) -->
+   <div style="position:absolute;right:-40px;top:-40px;width:190px;height:190px;border-radius:50%;background:rgba(255,255,255,.10)"></div>
+   <div style="position:absolute;left:-30px;bottom:60px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.07)"></div>
+
+   <div style="position:relative">
+    <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.22);border:1.5px solid rgba(255,255,255,.5);border-radius:999px;padding:6px 14px;margin-bottom:16px">
+     <span style="font-size:12px">🐧</span>
+     <span id="fn-hero-eyebrow" style="font-size:11px;font-weight:800;color:#fff;letter-spacing:.3px">요식업 사장님 전용 · AI 검색 시대</span>
+    </div>
+
+    <div id="fn-hero-title" style="font-size:33px;font-weight:900;color:#fff;line-height:1.24;letter-spacing:-1.2px;text-shadow:0 3px 16px rgba(150,50,0,.28)">부탁하지 않아도<br><span style="color:#FFE24C">리뷰가 쌓입니다</span></div>
+
+    <div id="fn-hero-sub" style="font-size:14px;color:rgba(255,255,255,.95);line-height:1.68;margin-top:12px;font-weight:600">손님은 <b style="color:#fff">게임하러</b> 오고,<br>매장엔 <b style="color:#fff">리뷰와 연락처</b>가 남습니다</div>
+
+    <!-- 핑크팽귄이 실제 게임 화면을 들고 보여주는 구도 -->
+    <div style="position:relative;display:flex;align-items:flex-end;justify-content:center;gap:2px;margin:18px 0 4px;min-height:230px">
+     <img src="penguin-idle.webp" alt="핑크팽귄" style="height:150px;width:auto;flex:none;margin-right:-14px;margin-bottom:6px;z-index:2;filter:drop-shadow(0 10px 16px rgba(120,40,0,.34))">
+
+     <!-- 폰 목업 : 실제 주사위 게임 화면 -->
+     <div style="flex:none;width:172px;background:#1c1c1e;border-radius:30px;padding:6px;transform:rotate(4deg);
+        box-shadow:0 22px 48px rgba(120,40,0,.4),inset 0 0 0 1.5px #3a3a3c">
+      <div style="text-align:center;padding:2px 0 3px"><div style="display:inline-block;width:38px;height:4px;background:#2e2e2e;border-radius:3px"></div></div>
+      <div style="background:#fff;border-radius:24px;overflow:hidden">
+       <div style="background:linear-gradient(155deg,#FFD98A,#FF8B42);padding:10px 10px 9px;text-align:center">
+        <div style="font-size:7.5px;color:rgba(255,255,255,.9);font-weight:700;margin-bottom:2px">🏪 오늘의 리뷰 이벤트</div>
+        <div style="font-size:13px;font-weight:900;color:#fff;line-height:1.2">굴리면 무조건 당첨!</div>
+       </div>
+       <div style="padding:11px 9px 10px;display:flex;flex-direction:column;align-items:center;gap:7px">
+        <div style="position:relative;width:144px;height:104px">
+         <div style="position:absolute;left:2px;top:62px;width:44px;height:44px;background:linear-gradient(155deg,#F1E9FF,#D9C6FF);border-radius:11px;transform:rotate(45deg);box-shadow:0 4px 0 #B49EE8"></div>
+         <div style="position:absolute;left:2px;top:62px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:17px;z-index:2">⭐</div>
+         <div style="position:absolute;left:40px;top:32px;width:44px;height:44px;background:linear-gradient(155deg,#FFF1CE,#FFDD9C);border-radius:11px;transform:rotate(45deg);box-shadow:0 4px 0 #E8B860"></div>
+         <div style="position:absolute;left:40px;top:32px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:17px;z-index:2">🥤</div>
+         <div style="position:absolute;left:78px;top:2px;width:44px;height:44px;background:linear-gradient(155deg,#FFEDA8,#F5B93F);border-radius:11px;transform:rotate(45deg);box-shadow:0 4px 0 #C08616"></div>
+         <div style="position:absolute;left:78px;top:2px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:17px;z-index:2">🎁</div>
+        </div>
+        <div style="background:linear-gradient(135deg,#FF6B00,#FF8C00);border-radius:9px;padding:8px 0;font-size:9.5px;font-weight:800;color:#fff;width:100%;text-align:center">🎲 주사위 굴리기</div>
        </div>
       </div>
-     </div>
-     <!-- Screen: Naver Review -->
-     <div style="background:#f5f5f7;border-radius:34px;overflow:hidden">
-      <div style="background:#03C75A;padding:14px 12px 11px">
-       <div style="display:flex;align-items:center;gap:5px;margin-bottom:7px">
-        <div style="width:18px;height:18px;background:rgba(0,0,0,0.15);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#fff;flex-shrink:0">N</div>
-        <span style="font-size:7.5px;color:rgba(255,255,255,0.8);font-weight:600">네이버 플레이스 리뷰 이벤트</span>
-       </div>
-       <div style="font-size:13.5px;font-weight:900;color:#fff;line-height:1.35">리뷰 쓰고<br>상품 받아가세요! 🎁</div>
-      </div>
-      <div style="padding:10px 11px 12px">
-       <div style="background:linear-gradient(135deg,#FFF8E1,#FFF3C4);border-radius:11px;padding:10px;margin-bottom:9px;border:1.5px solid #FFE082;text-align:center">
-        <div style="font-size:7.5px;font-weight:700;color:#92400e;margin-bottom:3px">🎉 당첨 상품</div>
-        <div style="font-size:14px;font-weight:900;color:#FF6B00;letter-spacing:-0.5px">희망 사이드 무료!</div>
-        <div style="font-size:7px;color:#b45309;margin-top:2px">쿠폰번호: R-2847-XF</div>
-       </div>
-       <div style="display:flex;justify-content:center;gap:1px;margin-bottom:5px">
-        <span style="font-size:18px;color:#FFB830;text-shadow:0 0 7px rgba(255,184,48,0.9)">★</span><span style="font-size:18px;color:#FFB830;text-shadow:0 0 7px rgba(255,184,48,0.9)">★</span><span style="font-size:18px;color:#FFB830;text-shadow:0 0 7px rgba(255,184,48,0.9)">★</span><span style="font-size:18px;color:#FFB830;text-shadow:0 0 7px rgba(255,184,48,0.9)">★</span><span style="font-size:18px;color:#FFB830;text-shadow:0 0 7px rgba(255,184,48,0.9)">★</span>
-       </div>
-       <div style="font-size:7.5px;color:#6b7280;text-align:center;margin-bottom:9px">리뷰 작성 시 쿠폰 즉시 발급</div>
-       <button style="background:#03C75A;border:none;border-radius:10px;padding:10px 0;font-size:10px;font-weight:800;color:#fff;width:100%;font-family:inherit">네이버 리뷰 작성하기 →</button>
-      </div>
-     </div>
-     <!-- Home Indicator -->
-     <div style="display:flex;justify-content:center;padding:6px 0 3px">
-      <div style="width:106px;height:5px;background:rgba(255,255,255,0.2);border-radius:3px"></div>
      </div>
     </div>
 
-    <!-- 앞 폰: 룰렛 게임 화면 (오른쪽) -->
-    <div style="position:absolute;right:-18px;top:6px;transform:rotate(9deg) translateZ(0);width:184px;z-index:2;
-      background:linear-gradient(170deg,#3c3c3e 0%,#1c1c1e 55%);
-      border-radius:46px;padding:8px;
-      box-shadow:inset 0 1px 0 rgba(255,255,255,0.14),inset 0 -1px 0 rgba(0,0,0,0.5),0 40px 100px rgba(0,0,0,0.95),0 12px 32px rgba(0,0,0,0.65),0 0 0 1px rgba(255,255,255,0.04)">
-     <!-- Dynamic Island -->
-     <div style="display:flex;justify-content:center;padding:5px 0 3px">
-      <div style="width:88px;height:24px;background:#000;border-radius:15px"></div>
-     </div>
-     <!-- Status Bar -->
-     <div style="display:flex;justify-content:space-between;align-items:center;padding:0 13px 5px">
-      <span style="font-size:8.5px;font-weight:700;color:#fff;letter-spacing:0">9:41</span>
-      <div style="display:flex;align-items:center;gap:3px">
-       <svg width="12" height="9" viewBox="0 0 12 9" style="display:block"><rect x="0" y="4" width="2.2" height="5" rx="0.6" fill="white" opacity="0.45"/><rect x="3.3" y="2.5" width="2.2" height="6.5" rx="0.6" fill="white" opacity="0.7"/><rect x="6.6" y="1" width="2.2" height="8" rx="0.6" fill="white" opacity="0.9"/><rect x="9.8" y="0" width="2.2" height="9" rx="0.6" fill="white"/></svg>
-       <svg width="13" height="9" viewBox="0 0 13 9" style="display:block"><path d="M6.5 2.2C4.4 2.2 2.5 3.1 1.1 4.5L2.4 5.8C3.5 4.7 4.9 4 6.5 4C8.1 4 9.5 4.7 10.6 5.8L11.9 4.5C10.5 3.1 8.6 2.2 6.5 2.2Z" fill="white" opacity="0.6"/><path d="M6.5 5.2C5.3 5.2 4.3 5.7 3.5 6.5L6.5 9.5L9.5 6.5C8.7 5.7 7.7 5.2 6.5 5.2Z" fill="white"/></svg>
-       <div style="width:17px;height:8.5px;border-radius:2.5px;border:1px solid rgba(255,255,255,0.55);position:relative;display:flex;align-items:center;padding:1.5px;box-sizing:border-box">
-        <div style="height:100%;width:78%;background:#4ade80;border-radius:1px"></div>
-        <div style="position:absolute;right:-3.5px;top:50%;transform:translateY(-50%);width:2.5px;height:4.5px;background:rgba(255,255,255,0.45);border-radius:0 1.5px 1.5px 0"></div>
-       </div>
-      </div>
-     </div>
-     <!-- Screen: Dice Game (메인 게임) -->
-     <div style="background:#fff;border-radius:36px;overflow:hidden">
-      <div style="background:linear-gradient(155deg,#FFD98A,#FF8B42);padding:12px 12px 10px">
-       <div style="font-size:7.5px;color:rgba(255,255,255,0.85);margin-bottom:3px;font-weight:600">🏪 맛있는 돈까스 · 오늘의 이벤트</div>
-       <div style="font-size:15px;font-weight:900;color:#fff;line-height:1.2">주사위 던지기 🎲</div>
-       <div style="font-size:7px;color:rgba(255,255,255,0.75);margin-top:2px">굴리면 무조건 당첨 · 꽝 없음</div>
-      </div>
-      <div style="padding:14px 10px 13px;display:flex;flex-direction:column;align-items:center;gap:8px">
-       <!-- 미니 계단 보드 -->
-       <div style="position:relative;width:150px;height:126px">
-        <div style="position:absolute;left:0;top:76px;width:50px;height:50px;background:linear-gradient(155deg,#F1E9FF,#D9C6FF);border-radius:12px;transform:rotate(45deg);box-shadow:0 4px 0 #B49EE8,0 9px 14px -4px rgba(120,80,200,.4)"></div>
-        <div style="position:absolute;left:0;top:76px;width:50px;height:50px;display:flex;align-items:center;justify-content:center;font-size:19px;z-index:2">⭐</div>
-        <div style="position:absolute;left:40px;top:39px;width:50px;height:50px;background:linear-gradient(155deg,#FFF1CE,#FFDD9C);border-radius:12px;transform:rotate(45deg);box-shadow:0 4px 0 #E8B860,0 9px 14px -4px rgba(210,150,40,.4)"></div>
-        <div style="position:absolute;left:40px;top:39px;width:50px;height:50px;display:flex;align-items:center;justify-content:center;font-size:19px;z-index:2">🥤</div>
-        <div style="position:absolute;left:80px;top:0;width:50px;height:50px;background:linear-gradient(155deg,#FFEDA8,#F5B93F);border-radius:12px;transform:rotate(45deg);box-shadow:0 4px 0 #C08616,0 11px 16px -4px rgba(190,120,10,.5)"></div>
-        <div style="position:absolute;left:80px;top:0;width:50px;height:50px;display:flex;align-items:center;justify-content:center;font-size:19px;z-index:2">🎁</div>
-        <img src="penguin-idle.webp" alt="핑크팽귄" style="position:absolute;left:0;top:44px;height:40px;width:auto;z-index:3;filter:drop-shadow(0 4px 4px rgba(0,0,0,.3))">
-       </div>
-       <div style="background:linear-gradient(135deg,#FFF0E0,#FFDDB8);border:1.5px solid #FF6B00;border-radius:10px;padding:6px 12px;text-align:center">
-        <span style="font-size:10px;font-weight:900;color:#FF6B00">🎁 당첨까지 2칸!</span>
-       </div>
-       <button style="background:linear-gradient(135deg,#FF6B00,#FF8C00);border:none;border-radius:11px;padding:11px 0;font-size:10.5px;font-weight:800;color:#fff;width:100%;text-align:center;font-family:inherit;box-shadow:0 4px 14px rgba(255,107,0,0.45)">🎲 주사위 굴리기</button>
-      </div>
-     </div>
-     <!-- Home Indicator -->
-     <div style="display:flex;justify-content:center;padding:6px 0 3px">
-      <div style="width:106px;height:5px;background:rgba(255,255,255,0.2);border-radius:3px"></div>
-     </div>
+    <!-- 4개 플랫폼 한 번에 -->
+    <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:14px 0 16px">
+     <span style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);border-radius:999px;padding:5px 11px;font-size:11px;font-weight:800;color:#fff">네이버</span>
+     <span style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);border-radius:999px;padding:5px 11px;font-size:11px;font-weight:800;color:#fff">카카오맵</span>
+     <span style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);border-radius:999px;padding:5px 11px;font-size:11px;font-weight:800;color:#fff">구글</span>
+     <span style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);border-radius:999px;padding:5px 11px;font-size:11px;font-weight:800;color:#fff">인스타</span>
+     <span style="background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:5px 11px;font-size:11px;font-weight:800;color:#FFE24C">한 번에 ↑</span>
     </div>
 
-   </div>
-
+    <button onclick="show('s-owner-signup')" style="width:100%;padding:17px;background:#fff;border:none;border-radius:16px;font-size:17px;font-weight:900;color:#E2540F;cursor:pointer;font-family:inherit;box-shadow:0 12px 26px rgba(120,30,0,.3),0 0 0 5px rgba(255,255,255,.22)">무료로 시작하기 →</button>
+    <div style="font-size:11.5px;color:rgba(255,255,255,.85);margin-top:10px;text-align:center;font-weight:600">네이버 URL 하나면 5분 완성 · 카드 등록 없음</div>
    </div>
   </section>
 
@@ -537,6 +482,34 @@ body.dark .dice-side-jp .dsj-item{background:linear-gradient(160deg,#4A3A18,#3A2
     <div style="font-size:13px;font-weight:700;color:#c2410c;line-height:1.7">리뷰를 준비하지 않은 매장은<br>AI 검색 시장에서 <span style="text-decoration:underline">보이지 않게 됩니다</span></div>
    </div>
   </section>
+
+  <!-- ②-b 자산 관점 — 리뷰·고객DB는 넘길 때 값이 되는 자산이라는 프레임.
+       "비용 쓰는 일"이 아니라 "자산 쌓는 일"로 재정의하는 구간. -->
+  <section style="background:#0D1B2A;padding:40px 22px">
+   <div id="fn-s2b-eyebrow" style="font-size:12px;font-weight:700;color:rgba(255,107,0,0.85);letter-spacing:1px;margin-bottom:12px">매장의 진짜 자산</div>
+   <div id="fn-s2b-title" style="font-size:22px;font-weight:900;color:#fff;line-height:1.32;margin-bottom:10px">리뷰와 고객 명단은<br>넘길 때 <span style="color:#FF6B00">값이 됩니다</span></div>
+   <div style="font-size:13px;color:rgba(255,255,255,0.55);line-height:1.75;margin-bottom:22px">권리금은 매출만으로 정해지지 않습니다.<br><b style="color:rgba(255,255,255,0.9)">검증된 리뷰와 살아있는 고객 명단</b>이 있는 매장은<br>넘길 때도, 지킬 때도 이야기가 달라집니다.</div>
+
+   <!-- 같은 매출, 다른 가치 -->
+   <div style="display:flex;gap:10px;margin-bottom:16px">
+    <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:16px;padding:16px 14px">
+     <div style="font-size:11px;font-weight:800;color:rgba(255,255,255,0.35);margin-bottom:10px">A 매장</div>
+     <div style="font-size:13px;color:rgba(255,255,255,0.5);line-height:1.9">리뷰 20개<br>고객 명단 없음<br>재방문 파악 불가</div>
+     <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08);font-size:12px;color:rgba(255,255,255,0.35)">넘길 때<br><b style="font-size:14px;color:rgba(255,255,255,0.55)">매출 자료만</b></div>
+    </div>
+    <div style="flex:1;background:rgba(255,107,0,0.10);border:1.5px solid rgba(255,107,0,0.45);border-radius:16px;padding:16px 14px">
+     <div style="font-size:11px;font-weight:800;color:#FF8B42;margin-bottom:10px">B 매장 · 리뷰팡</div>
+     <div style="font-size:13px;color:rgba(255,255,255,0.82);line-height:1.9">리뷰 500개+<br>고객 3,000명<br>전환율 데이터</div>
+     <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,107,0,0.25);font-size:12px;color:rgba(255,255,255,0.5)">넘길 때<br><b style="font-size:14px;color:#FF8B42">검증된 단골 자산</b></div>
+    </div>
+   </div>
+
+   <div style="background:rgba(255,255,255,0.05);border-radius:14px;padding:15px 16px">
+    <div style="font-size:13px;font-weight:800;color:#fff;margin-bottom:6px">📒 숫자로 증명됩니다</div>
+    <div style="font-size:12px;color:rgba(255,255,255,0.55);line-height:1.75">QR을 몇 명이 열었고, 몇 명이 리뷰를 쓰고, 몇 명이 다시 왔는지<br>전부 기록으로 남습니다. <b style="color:rgba(255,255,255,0.85)">말이 아니라 데이터로</b> 보여줄 수 있어요.</div>
+   </div>
+  </section>
+
 
   <!-- ③ 장사 공식 2가지 -->
   <section style="background:#0D1B2A;padding:40px 22px">
@@ -2423,6 +2396,8 @@ const FUNNEL_FIELDS=[
   {g:'히어로(첫 화면)',k:'fnHeroSub',   id:'fn-hero-sub',   label:'설명'},
   {g:'② 검색 시장의 변화',k:'fnS2Eyebrow',id:'fn-s2-eyebrow',label:'작은 문구'},
   {g:'② 검색 시장의 변화',k:'fnS2Title',  id:'fn-s2-title',  label:'제목'},
+  {g:'②-b 매장 자산(양도양수)',k:'fnS2bEyebrow',id:'fn-s2b-eyebrow',label:'작은 문구'},
+  {g:'②-b 매장 자산(양도양수)',k:'fnS2bTitle',  id:'fn-s2b-title',  label:'제목'},
   {g:'③ 장사 공식',k:'fnS3Eyebrow',id:'fn-s3-eyebrow',label:'작은 문구'},
   {g:'③ 장사 공식',k:'fnS3Title',  id:'fn-s3-title',  label:'제목'},
   {g:'④ 전체 흐름(핑크팽귄)',k:'fnS4Eyebrow',id:'fn-s4-eyebrow',label:'작은 문구'},
