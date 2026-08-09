@@ -293,7 +293,9 @@ body.dark .dt-jackpot{--kct:linear-gradient(140deg,#7A5A16,#5C420E);--kcs:#3E2C0
 
 .dice-status-bar{display:flex;align-items:center;justify-content:space-between;padding:0 22px;margin-bottom:10px}
 .dice-count-badge{font-family:monospace;font-size:13px;font-weight:800;color:#fff;padding:6px 14px;border-radius:20px;
-  background:linear-gradient(160deg,#3D4250,#20242E);box-shadow:0 3px 0 #14161c,0 6px 12px -4px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.18)}
+  background:linear-gradient(160deg,#3D4250,#20242E);box-shadow:0 3px 0 #14161c,0 6px 12px -4px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.18);
+  border:none;cursor:pointer;display:inline-flex;align-items:center;-webkit-tap-highlight-color:transparent}
+.dice-count-badge:active{transform:translateY(1px)}
 .dice-jackpot-banner{font-size:12.5px;font-weight:800;color:#7A4A06;text-align:center;padding:9px;border-radius:14px;margin:0 20px 6px;
   background:linear-gradient(160deg,#FFF3D2,#FCE1A0);box-shadow:0 3px 0 #E3BA5C,0 8px 16px -6px rgba(200,140,20,.35),inset 0 1px 0 rgba(255,255,255,.7)}
 body.dark .dice-jackpot-banner{background:linear-gradient(160deg,#4A3A18,#3A2C10);color:#F5C866;box-shadow:0 3px 0 #241c0c,0 8px 16px -6px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.08)}
@@ -1636,7 +1638,7 @@ body.dark .dice-side-jp .dsj-item{background:linear-gradient(160deg,#4A3A18,#3A2
     </div>
     <div class="dice-status-bar">
       <span style="font-size:12px;color:var(--t3);font-weight:600">내 진행 상황</span>
-      <span class="dice-count-badge">🎲 <span id="dice-count">0</span></span>
+      <button class="dice-count-badge" onclick="openDiceChargeModal()">🎲 <span id="dice-count">0</span> <span style="opacity:.7;font-size:10px;margin-left:2px">충전▸</span></button>
     </div>
     <div id="dice-jackpot-banner" class="dice-jackpot-banner"></div>
     <div class="dice-stage">
@@ -1885,6 +1887,24 @@ body.dark .dice-side-jp .dsj-item{background:linear-gradient(160deg,#4A3A18,#3A2
 <!-- ══════════ 🏆 잭팟 2차 추첨 ══════════ -->
 <div id="dice-jackpot-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:10000;align-items:center;justify-content:center;padding:16px">
   <div class="dice-reveal-box" id="dice-jackpot-box"></div>
+</div>
+
+<!-- ══════════ 🎲 주사위 현장 충전 (직원/사장님 승인) ══════════
+     75초 자동 체류검증을 놓친 고객을 위해, 직원·사장님이 그 자리에서 승인번호를 입력해
+     1~2개만 충전해줄 수 있게 한다. 무분별한 충전을 막기 위해 모든 승인은 기록에 남는다. -->
+<div id="dice-charge-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:10000;align-items:center;justify-content:center;padding:16px">
+  <div class="dice-reveal-box" style="max-width:300px">
+    <div style="font-size:32px;margin-bottom:6px">🎲</div>
+    <div class="drv-name" style="margin-bottom:4px">주사위 현장 충전</div>
+    <div class="drv-sub" style="margin-bottom:16px">직원 또는 사장님이 승인번호를 입력하고<br>충전할 개수를 눌러주세요</div>
+    <input id="dice-charge-pin" type="password" inputmode="numeric" placeholder="승인번호 (직원 PIN 또는 사장님 비밀번호)"
+      style="width:100%;box-sizing:border-box;padding:13px 14px;border:1.5px solid var(--border);border-radius:11px;font-size:15px;outline:none;font-family:Noto Sans KR,sans-serif;background:var(--white);color:var(--t1);text-align:center;margin-bottom:12px">
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-blue" style="flex:1" onclick="diceApproveCharge(1)">🎲 +1개</button>
+      <button class="btn btn-blue" style="flex:1" onclick="diceApproveCharge(2)">🎲 +2개</button>
+    </div>
+    <button class="btn-ghost" style="margin-top:10px;color:var(--t3)" onclick="closeDiceChargeModal()">닫기</button>
+  </div>
 </div>
 
 <!-- ══════════ 🎲 주사위 충전 미션 ══════════ -->
@@ -3156,6 +3176,48 @@ function _showDiceRevealBox(result){
 }
 function closeDiceReveal(){
   document.getElementById('dice-reveal-overlay').style.display='none';
+}
+
+/* ── 🎲 주사위 현장 충전 — 고객 화면에서 직원/사장님이 직접 승인 ──
+   75초 자동 체류검증을 놓친 경우의 구제 수단. 무분별한 충전을 막기 위해
+   승인번호가 맞아야만 지급되고, 성공/실패 모두 STORE.staffLogs에 남는다
+   (부정 수급 방지 — 사장님이 관리자 화면에서 전부 확인 가능). */
+function openDiceChargeModal(){
+  if(!currentUser){toast('로그인 후 이용해주세요');return}
+  document.getElementById('dice-charge-pin').value='';
+  document.getElementById('dice-charge-overlay').style.display='flex';
+}
+function closeDiceChargeModal(){
+  document.getElementById('dice-charge-overlay').style.display='none';
+}
+function diceApproveCharge(amount){
+  const pinEl=document.getElementById('dice-charge-pin');
+  const pin=(pinEl.value||'').trim();
+  if(!pin){toast('승인번호를 입력해주세요');return}
+  let approver=null;
+  if(STORE.adminPassword&&pin===STORE.adminPassword)approver='사장님';
+  else{
+    const st=(STORE.staff||[]).find(s=>s.active&&s.pin===pin);
+    if(st)approver=st.name;
+  }
+  if(!STORE.staffLogs)STORE.staffLogs=[];
+  if(!approver){
+    // 실패 시도도 남겨야 무분별한 PIN 대입 시도를 사장님이 알아챌 수 있다
+    STORE.staffLogs.unshift({name:'주사위 현장충전 실패(승인번호 불일치)',date:today(),datetime:nowStr(),id:'DICE-CHARGE-FAIL',customer:currentUser.name,staff:'-'});
+    saveState();
+    toast('승인번호가 올바르지 않습니다');
+    pinEl.value='';
+    pinEl.focus();
+    return;
+  }
+  const state=getMyDiceState();
+  state.dice=(state.dice||0)+amount;
+  STORE.staffLogs.unshift({name:'🎲 주사위 '+amount+'개 현장충전',date:today(),datetime:nowStr(),id:'DICE-CHARGE',customer:currentUser.name,staff:approver});
+  saveState();
+  logEvent('mission_done',{mission:'onscreen_charge',by:approver,amount});
+  closeDiceChargeModal();
+  renderDiceBoard();
+  toast('🎲 주사위 '+amount+'개가 충전되었습니다!');
 }
 
 /* ── 🎲 주사위 충전 미션 (S5) ── */
@@ -6615,6 +6677,10 @@ function renderCustomersTab(el){
       </div>
       <div id="dice-grant-result"></div>
     </div>
+    <div class="card" style="margin:0 16px 14px">
+      <div style="font-size:14px;font-weight:700;color:var(--t1);padding:14px 16px 4px">📋 주사위·쿠폰 처리 내역 <span style="font-size:11px;color:var(--t4);font-weight:600">부정 수급 방지용 — 직원 처리 내역이 전부 여기 남아요</span></div>
+      <div id="admin-staff-log"></div>
+    </div>
     <div style="padding:0 16px 12px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
         <div class="section-label" style="padding:0">고객 연락처</div>
@@ -6682,6 +6748,7 @@ function renderCustomersTab(el){
     </div>
     <div style="padding:0 16px 16px;font-size:11px;color:var(--t4);line-height:1.6">최근방문: 🟢 7일 이내 · 🟡 8~30일 · 🔴 30일 초과</div>
   `;
+  renderStaffLog('admin-staff-log');
 }
 
 function setCustVisitMode(mode){
@@ -7019,12 +7086,19 @@ function resetStampCard(uid,uname){
   document.getElementById('stamp-phone').value='';
   renderStaffLog();
 }
-function renderStaffLog(){
-  const el=document.getElementById('staff-log');
+function renderStaffLog(targetId){
+  const el=document.getElementById(targetId||'staff-log');
+  if(!el)return;
   if(!STORE.staffLogs||!STORE.staffLogs.length){el.innerHTML='<div style="padding:6px 20px 16px;font-size:14px;color:var(--t4)">처리 내역이 없습니다</div>';return}
-  el.innerHTML=STORE.staffLogs.slice(0,12).map(l=>{
+  el.innerHTML=STORE.staffLogs.slice(0,20).map(l=>{
     if(l.type==='stamp_reset'){
       return `<div class="admin-row"><div style="flex:1"><div style="font-size:14px;font-weight:600;color:var(--t1)">⭐ 스탬프 초기화 · ${l.customer}</div><div style="font-size:12px;color:var(--t3)">${l.date} · ${l.staff||'직원'} · ${l.detail||''}</div></div><span class="li-badge badge-yellow">초기화</span></div>`;
+    }
+    if(l.id==='DICE-CHARGE-FAIL'){
+      return `<div class="admin-row"><div style="flex:1"><div style="font-size:14px;font-weight:600;color:var(--red)">🚫 주사위 현장충전 시도 실패 · ${l.customer}</div><div style="font-size:12px;color:var(--t3)">${l.date} · 승인번호 불일치</div></div><span class="li-badge badge-red">실패</span></div>`;
+    }
+    if(l.id==='DICE-CHARGE'){
+      return `<div class="admin-row"><div style="flex:1"><div style="font-size:14px;font-weight:600;color:var(--t1)">${l.name} · ${l.customer}</div><div style="font-size:12px;color:var(--t3)">${l.date} · 승인: ${l.staff}</div></div><span class="li-badge badge-green">완료</span></div>`;
     }
     return `<div class="admin-row"><div style="flex:1"><div style="font-size:14px;font-weight:600;color:var(--t1)" class="strike">${l.name||l.customer||'-'}</div><div style="font-size:12px;color:var(--t3)">${l.date} · ${l.id||l.staff||''}</div></div><span class="li-badge badge-green">완료</span></div>`;
   }).join('');
