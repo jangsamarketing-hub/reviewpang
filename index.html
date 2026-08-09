@@ -194,10 +194,18 @@ body.dark #s-dice .topbar{border-bottom-color:rgba(255,255,255,.06)}
 .dice-track{position:absolute;left:0;top:0;width:100%;height:100%;
   transition:transform .34s cubic-bezier(.32,1.28,.6,1)}
 .dice-track.nofx{transition:none}
-.dice-pawn{position:absolute;z-index:900;pointer-events:none;width:66px;
-  display:flex;justify-content:center;animation:dicePawnBob 1.6s ease-in-out infinite}
+.dice-pawn{position:absolute;z-index:900;pointer-events:none;width:66px;height:64px;
+  display:flex;align-items:flex-end;justify-content:center;animation:dicePawnBob 1.6s ease-in-out infinite}
 .dice-pawn.hop{animation:diceHop .34s cubic-bezier(.3,.9,.4,1)}
-.dice-pawn svg{display:block;filter:drop-shadow(0 8px 7px rgba(0,0,0,.34))}
+.pawn-stack{position:relative;width:66px;height:64px}
+.pawn-stack img{position:absolute;left:50%;bottom:0;transform:translateX(-50%);
+  height:64px;width:auto;max-width:none;filter:drop-shadow(0 8px 7px rgba(0,0,0,.34))}
+.pawn-idle{opacity:1}
+.pawn-jump{opacity:0;height:58px}
+.dice-pawn.hop .pawn-idle{animation:pawnIdleFade .34s steps(1,end)}
+.dice-pawn.hop .pawn-jump{animation:pawnJumpFade .34s steps(1,end)}
+@keyframes pawnIdleFade{0%{opacity:1}17%{opacity:1}22%{opacity:0}82%{opacity:0}88%{opacity:1}100%{opacity:1}}
+@keyframes pawnJumpFade{0%{opacity:0}17%{opacity:0}22%{opacity:1}82%{opacity:1}88%{opacity:0}100%{opacity:0}}
 @keyframes diceHop{0%{transform:translateY(0) scaleY(1)}
   22%{transform:translateY(-2px) scaleY(.86)}
   55%{transform:translateY(-30px) scaleY(1.1)}
@@ -268,7 +276,7 @@ body.dark .dt-jackpot{--kct:linear-gradient(140deg,#7A5A16,#5C420E);--kcs:#3E2C0
 .dice-mini .dtile-cap{animation:none}
 .dice-mini .dt-jackpot .dtile-cap{animation:diceJackpotGlow 2.2s ease-in-out infinite}
 .home-pawn{position:absolute;z-index:200;display:flex;justify-content:center}
-.home-pawn svg{display:block;filter:drop-shadow(0 6px 6px rgba(0,0,0,.32))}
+.home-pawn img{display:block;filter:drop-shadow(0 6px 6px rgba(0,0,0,.32))}
 
 /* 리뷰 문구 조립기 */
 .rv-pills{display:flex;flex-wrap:wrap;gap:6px}
@@ -2553,27 +2561,17 @@ function _d3FaceHtml(n,tf){
 function _die3dHtml(){
   return `<div class="die-wrap"><div class="die3d">${_D3_FACES.map(f=>_d3FaceHtml(f[0],f[1])).join('')}</div></div>`;
 }
-// 귀여운 펭귄 (SVG — 외부 이미지 없이 그림)
-function _penguinSvg(size){
-  const w=size||54;
-  return `<svg viewBox="0 0 64 70" width="${w}" height="${Math.round(w*70/64)}" xmlns="http://www.w3.org/2000/svg">
-    <ellipse cx="32" cy="66" rx="16" ry="3.4" fill="rgba(0,0,0,.2)"/>
-    <ellipse cx="23" cy="61" rx="7.5" ry="4" fill="#FF9C2E"/>
-    <ellipse cx="41" cy="61" rx="7.5" ry="4" fill="#FF9C2E"/>
-    <path d="M32 5C18.5 5 10 17 10 33.5S18.5 62 32 62s22-12 22-28.5S45.5 5 32 5z" fill="#333C52"/>
-    <ellipse cx="11.5" cy="37" rx="5.5" ry="13" fill="#283043" transform="rotate(-8 11.5 37)"/>
-    <ellipse cx="52.5" cy="37" rx="5.5" ry="13" fill="#283043" transform="rotate(8 52.5 37)"/>
-    <ellipse cx="32" cy="40" rx="14.5" ry="19" fill="#fff"/>
-    <ellipse cx="24.5" cy="26" rx="4.2" ry="4.6" fill="#fff"/>
-    <ellipse cx="39.5" cy="26" rx="4.2" ry="4.6" fill="#fff"/>
-    <circle cx="25.2" cy="26.6" r="2.7" fill="#1B2233"/>
-    <circle cx="38.8" cy="26.6" r="2.7" fill="#1B2233"/>
-    <circle cx="26.2" cy="25.4" r="1.1" fill="#fff"/>
-    <circle cx="39.8" cy="25.4" r="1.1" fill="#fff"/>
-    <ellipse cx="18.5" cy="33" rx="3.4" ry="2.2" fill="#FFAFBE" opacity=".85"/>
-    <ellipse cx="45.5" cy="33" rx="3.4" ry="2.2" fill="#FFAFBE" opacity=".85"/>
-    <path d="M32 31.5l-5 4.2 5 3.6 5-3.6z" fill="#FF9C2E"/>
-  </svg>`;
+// 🐧 리뷰팡 시그니처 마스코트 — 핑크팽귄. 평소엔 서있는 사진, 이동(hop) 중엔 날개 든 사진으로 크로스페이드
+const PENGUIN_IDLE_SRC='penguin-idle.webp',PENGUIN_JUMP_SRC='penguin-jump.webp';
+function _penguinIdleImg(w){
+  const width=w||54,h=Math.round(width*682/480);
+  return `<img src="${PENGUIN_IDLE_SRC}" alt="펭귄" width="${width}" height="${h}" style="height:${h}px;width:${width}px">`;
+}
+function _penguinPawnHtml(){
+  return `<div class="pawn-stack">`+
+    `<img class="pawn-idle" src="${PENGUIN_IDLE_SRC}" alt="펭귄">`+
+    `<img class="pawn-jump" src="${PENGUIN_JUMP_SRC}" alt="펭귄">`+
+  `</div>`;
 }
 // 홈·대기화면에 넣을 실제 보드 축소판 (본판과 동일한 기하·키캡·상품 라벨)
 // 홈·랜딩 카드에서 보드 옆 여백에 넣는 잭팟 상품 목록 — "이거 받을 수도 있겠다"는 CTA용
@@ -2612,7 +2610,7 @@ function _diceMiniBoard(startPos,count,scale){
       `<div class="dtile-cap"></div><div class="dtile-content"><span class="dt-ic">${prize.icon||'🎁'}</span></div>`+
       `<span class="dt-badge${prize.type==='stamp'?' plain':''}">${_diceShortLabel(prize)}</span></div>`;
   });
-  inner+=`<div class="home-pawn" style="left:${pts[0].x+13}px;top:${maxY+TOP_PAD-16}px">${_penguinSvg(42)}</div>`;
+  inner+=`<div class="home-pawn" style="left:${pts[0].x+13}px;top:${maxY+TOP_PAD-16}px">${_penguinIdleImg(42)}</div>`;
   const h=Math.round((maxY+66+TOP_PAD)*scale);
   return `<div class="dice-mini" style="height:${h}px"><div class="dice-mini-inner" style="transform:scale(${scale})">${inner}</div></div>`;
 }
@@ -2665,7 +2663,7 @@ function _diceApplyCamera(pos,animate){
   track.classList.toggle('nofx',!animate);
   track.style.transform=`translate(${ax-p.x}px,${ay-p.y}px)`;
   pawn.style.left=ax+'px';
-  pawn.style.top=(ay-30)+'px';
+  pawn.style.top=(ay-56)+'px';
   if(!animate)void track.offsetWidth; // 즉시 반영 후 트랜지션 복구
 }
 function renderDiceBoard(){
@@ -2684,7 +2682,7 @@ function renderDiceBoard(){
     html+=_diceTileHtml(k,prize,false,`left:${x}px;top:${y}px;z-index:${500-(k-_diceBase)}`);
   }
   track.innerHTML=html;
-  document.getElementById('dice-pawn').innerHTML=_penguinSvg(54);
+  document.getElementById('dice-pawn').innerHTML=_penguinPawnHtml();
   _diceApplyCamera(state.pos,false);
   document.getElementById('dice-count').textContent=state.dice;
   const dist=_diceDistTo(cfg.tiles,state.pos,'jack');
