@@ -2162,11 +2162,83 @@ const _SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJl
 const _sb=(window.supabase||{}).createClient?window.supabase.createClient(_SB_URL,_SB_KEY):null;
 
 // 단일 매장 Supabase에 저장
+/* ⚠️ 매장 데이터는 JSON 한 덩어리라, 그냥 upsert하면 원격을 통째로 덮어쓴다.
+   여러 손님이 동시에 QR을 찍으면 나중에 저장한 기기가 앞사람이 등록한 고객을 지워버린다
+   (lost update). 연락처 수집이 이 서비스의 핵심 자산이므로, 올리기 직전에 원격을 다시 읽어
+   '쌓이기만 하는 목록'들을 합친 뒤 올린다. */
+function _mergeAppendOnly(local,remote,key){
+  if(!Array.isArray(remote)||!remote.length)return local||[];
+  const out=Array.isArray(local)?local.slice():[];
+  const seen=new Set(out.map(key));
+  remote.forEach(r=>{if(!seen.has(key(r))){out.push(r);seen.add(key(r));}});
+  return out;
+}
+function _mergeRemoteIntoLocal(local,remote){
+  if(!local||!remote)return;
+  // 고객 연락처 — 절대 유실되면 안 되는 자산
+  local.users=_mergeAppendOnly(local.users,remote.users,u=>u.id||u.phone);
+  local.surveys=_mergeAppendOnly(local.surveys,remote.surveys,s=>(s.uid||'')+'|'+(s.datetime||s.date||''));
+  local.spinLog=_mergeAppendOnly(local.spinLog,remote.spinLog,s=>(s.userId||'')+'|'+(s.date||'')+'|'+(s.gameType||''));
+  local.staffLogs=_mergeAppendOnly(local.staffLogs,remote.staffLogs,l=>(l.id||'')+'|'+(l.datetime||''));
+  local.extraEventLog=_mergeAppendOnly(local.extraEventLog,remote.extraEventLog,e=>(e.userId||'')+'|'+(e.date||'')+'|'+(e.platform||''));
+  // 쿠폰 — 같은 쿠폰이 양쪽에 있으면 '사용됨'이 이긴다 (사용 처리가 되돌려지면 중복 사용 위험)
+  if(Array.isArray(remote.coupons)&&remote.coupons.length){
+    const byId={};
+    (local.coupons||[]).forEach(c=>{byId[c.id]=c;});
+    remote.coupons.forEach(r=>{
+      const cur=byId[r.id];
+      if(!cur)byId[r.id]=r;
+      else if(cur.status!=='used'&&r.status==='used')byId[r.id]=r;
+    });
+    local.coupons=Object.values(byId);
+  }
+  // 스탬프 — 기기마다 다르면 더 많이 쌓인 쪽을 인정 (손님에게 불리하지 않게)
+  if(remote.stampCards){
+    local.stampCards=local.stampCards||{};
+    Object.keys(remote.stampCards).forEach(uid=>{
+      const r=remote.stampCards[uid],l=local.stampCards[uid];
+      if(!l||(r.count||0)>(l.count||0))local.stampCards[uid]=r;
+    });
+  }
+  // 주사위 진행상태 — 해당 기기에서 굴린 결과가 사라지지 않게, 없는 고객만 채운다
+  if(remote.diceState){
+    local.diceState=local.diceState||{};
+    Object.keys(remote.diceState).forEach(uid=>{if(!local.diceState[uid])local.diceState[uid]=remote.diceState[uid];});
+  }
+}
+let _pushBusy=false,_pushAgain=false;
 async function _sbPush(storeId){
   if(!_sb||!storeId||!storesDB[storeId])return;
+  if(_pushBusy){_pushAgain=true;return;}   // 동시에 여러 번 저장돼도 순서대로 한 번씩만
+  _pushBusy=true;
   try{
-    await _sb.from('stores').upsert({store_id:storeId,data:storesDB[storeId],updated_at:new Date().toISOString()},{onConflict:'store_id'});
+    const remote=await _sbLoad(storeId);
+    if(remote&&storesDB[storeId])_mergeRemoteIntoLocal(storesDB[storeId],remote);
+    if(storesDB[storeId]){
+      storesDB[storeId]._sbTs=Date.now();
+      saveStoresDB();
+      await _sb.from('stores').upsert({store_id:storeId,data:storesDB[storeId],updated_at:new Date().toISOString()},{onConflict:'store_id'});
+    }
   }catch(e){console.warn('[sb push]',e);}
+  finally{
+    _pushBusy=false;
+    if(_pushAgain){_pushAgain=false;setTimeout(()=>_sbPush(storeId),60);}
+  }
+}
+/* 고객 연락처는 위 병합과 별개로, 절대 덮어써지지 않는 전용 테이블에도 남긴다.
+   JSON 블롭이 어떤 이유로 꼬여도 사장님의 연락처 자산은 여기서 복구할 수 있다. */
+function upsertCustomer(user){
+  try{
+    if(!user||!STORE_ID)return;
+    fetch(_SB_URL+'/rest/v1/store_customers?on_conflict=store_id,phone',{
+      method:'POST',
+      headers:{'apikey':_SB_KEY,'Authorization':'Bearer '+_SB_KEY,'Content-Type':'application/json',
+               'Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify([{store_id:STORE_ID,uid:user.id,name:user.name,
+        phone:(user.phone||'').replace(/-/g,''),marketing:!!user.marketing,
+        marketing_consent_at:user.marketingConsentAt||null}])
+    }).catch(()=>{});
+  }catch(e){}
 }
 // 신규 매장 가입 시 카카오 알림 (Edge Function 호출)
 function _notifyNewStore(storeId,storeData){
@@ -3579,6 +3651,7 @@ function phoneLogin(){
   currentUser=user;
   try{saveState();}catch(err){/* iOS 시크릿모드 등 localStorage 실패 시에도 진행 */}
   logEvent('login',{returning:(user.visits||0)>0,marketing:!!marketing});
+  upsertCustomer(user);   // 연락처는 전용 테이블에도 남겨 유실을 원천 차단
   show('s-home');
   saveSession();
 }

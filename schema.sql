@@ -75,5 +75,33 @@ SELECT
 FROM store_events
 GROUP BY store_id, day;
 
+-- ============================================================
+-- 👥 고객 연락처 원장 (store_customers)
+-- ============================================================
+-- ⚠️ 왜 따로 두는가:
+--    stores.data 는 매장 전체가 JSON 한 덩어리라, 여러 손님이 동시에 QR을 찍으면
+--    나중에 저장한 기기가 앞사람이 등록한 고객을 덮어써 연락처가 사라질 수 있다.
+--    연락처는 이 서비스의 핵심 자산이므로, 덮어써질 수 없는 전용 테이블에도 함께 남긴다.
+--    (앱은 로그인할 때마다 여기에 phone 기준으로 upsert 한다)
+CREATE TABLE IF NOT EXISTS store_customers (
+  store_id             text        NOT NULL,
+  phone                text        NOT NULL,
+  uid                  text,
+  name                 text,
+  marketing            boolean     DEFAULT false,   -- 광고 수신동의 여부
+  marketing_consent_at text,                        -- 동의 시각 (정보통신망법 입증자료)
+  first_seen           timestamptz NOT NULL DEFAULT now(),
+  updated_at           timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (store_id, phone)
+);
+
+ALTER TABLE store_customers DISABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_cust_store ON store_customers (store_id, updated_at DESC);
+
+DROP TRIGGER IF EXISTS store_customers_updated_at ON store_customers;
+CREATE TRIGGER store_customers_updated_at
+  BEFORE UPDATE ON store_customers
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
 -- 확인용 쿼리
-SELECT 'stores + store_events 생성 완료 ✅' AS result;
+SELECT 'stores + store_events + store_customers 생성 완료 ✅' AS result;
