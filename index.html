@@ -299,11 +299,6 @@ body.dark .dt-jackpot{--kct:linear-gradient(140deg,#7A5A16,#5C420E);--kcs:#3E2C0
 .dice-jackpot-banner{font-size:12.5px;font-weight:800;color:#7A4A06;text-align:center;padding:9px;border-radius:14px;margin:0 20px 6px;
   background:linear-gradient(160deg,#FFF3D2,#FCE1A0);box-shadow:0 3px 0 #E3BA5C,0 8px 16px -6px rgba(200,140,20,.35),inset 0 1px 0 rgba(255,255,255,.7)}
 body.dark .dice-jackpot-banner{background:linear-gradient(160deg,#4A3A18,#3A2C10);color:#F5C866;box-shadow:0 3px 0 #241c0c,0 8px 16px -6px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.08)}
-/* 🪑 웨이팅 — 노란/파란 강조 패널은 하드코딩 색이라 다크모드 대응을 별도로 준다 */
-.w-gold{background:linear-gradient(160deg,#FFF3D2,#FCE1A0);color:#7A4A06;box-shadow:0 3px 0 #E3BA5C}
-body.dark .w-gold{background:linear-gradient(160deg,#4A3A18,#3A2C10);color:#F5C866;box-shadow:0 3px 0 #241c0c}
-.w-blue{background:linear-gradient(160deg,#E7F0FF,#CFE0FF);color:#1b4fa0;box-shadow:0 3px 0 #9DB9E8}
-body.dark .w-blue{background:linear-gradient(160deg,#1E2C46,#162034);color:#8FB6F5;box-shadow:0 3px 0 #101827}
 /* 보드 우측 빈 공간에 얹는 당첨상품(잭팟 하위 상품) 미니 리스트 */
 .dice-side-jp{position:absolute;left:8px;top:8px;bottom:8px;width:92px;z-index:60;
   display:flex;flex-direction:column;gap:6px;overflow-y:auto}
@@ -2055,22 +2050,6 @@ body.dark .dice-side-jp .dsj-item{background:linear-gradient(160deg,#4A3A18,#3A2
 </div>
 
 <!-- ══════════ 직원 확인 ══════════ -->
-<!-- ══════════ 🪑 웨이팅 — 손님 등록 ══════════ -->
-<div class="scr" id="s-waiting">
-  <div class="topbar"><div class="tb-title">🪑 웨이팅 접수</div></div>
-  <div class="scroll" style="background:var(--white)">
-    <div id="waiting-reg-body" style="padding:18px 20px 28px"></div>
-  </div>
-</div>
-
-<!-- ══════════ 🪑 웨이팅 — 내 순번 ══════════ -->
-<div class="scr" id="s-waiting-status">
-  <div class="topbar"><div class="tb-title">🪑 내 대기 순번</div></div>
-  <div class="scroll" style="background:var(--white)">
-    <div id="waiting-status-body" style="padding:18px 20px 28px"></div>
-  </div>
-</div>
-
 <div class="scr" id="s-staff-check">
   <div style="background:var(--white);padding:max(env(safe-area-inset-top),20px) 20px 16px;border-bottom:1px solid var(--border2)">
     <div style="display:flex;align-items:center;justify-content:space-between">
@@ -2166,7 +2145,6 @@ body.dark .dice-side-jp .dsj-item{background:linear-gradient(160deg,#4A3A18,#3A2
     <div class="chips">
       <button class="chip on" id="atab-stats" onclick="selATab('stats',this)">통계</button>
       <button class="chip off" id="atab-customers" onclick="selATab('customers',this)">고객·연락처</button>
-      <button class="chip off" id="atab-waiting" onclick="selATab('waiting',this)">🪑 웨이팅</button>
       <button class="chip off" id="atab-qr" onclick="selATab('qr',this)">QR코드</button>
       <button class="chip off" id="atab-roulette" onclick="selATab('roulette',this)">게임 설정</button>
       <button class="chip off" id="atab-coupons" onclick="selATab('coupons',this)">쿠폰</button>
@@ -2741,22 +2719,15 @@ function migrateStore(s){
   if(!s.crmTemplates.promo)s.crmTemplates.promo='(광고) {매장명}\n🎁 이번 주 특별 이벤트 안내\n\n{고객명}님 안녕하세요!\n(여기에 이번 주 이벤트나 신메뉴 소식을 적어주세요)\n\n▶ 이벤트 참여하기\n{링크}\n\n오늘도 행복한 하루 보내세요!\n무료수신거부 {수신거부}';
   // 사장님이 주 1회 주사위를 충전해주는 방식 — 충전 주기(일)
   if(!s.diceRechargeDays)s.diceRechargeDays=7;
-  // 쿠폰 사용 정책 — 발급은 후하게, 사용은 하루 N개로 제한해 1일 최대 지출을 확정한다
-  if(!s.couponPolicy)s.couponPolicy={dailyUseLimit:2,unusedWarnAt:5};
+  // 쿠폰 사용 정책 — 발급은 후하게, 사용은 하루 N개로 제한해 1일 최대 지출을 확정한다.
+  // mainDailyLimit: 메인메뉴·식사권 같은 고가 '메인' 상품은 하루 최대 N개까지만 (메인만 골라먹기 방지)
+  if(!s.couponPolicy)s.couponPolicy={dailyUseLimit:3,unusedWarnAt:5,mainDailyLimit:1};
   // 매장 세팅 체크리스트 — 리뷰 링크를 등록 안 하고 QR부터 뿌리면 미션이 죽는 사고를 막기 위한 안내
   if(!s.setupChecklist)s.setupChecklist={gameConfirmed:false,qrConfirmed:false};
-  // 🪑 웨이팅 관리 — 대기 시간을 보상으로 바꿔 재방문 자산으로 전환하는 장치
-  if(!s.waiting)s.waiting={enabled:false,open:false,avgMin:12,compensateAfterMin:30,
-    compensateType:'dice',compensateDice:1,compensateCoupon:'음료 1잔 무료',maxTeams:0,list:[]};
-  if(!Array.isArray(s.waiting.list))s.waiting.list=[];
-  // 블롭 용량 보호 — 마감된 항목이 무한히 쌓이지 않게 최근 것만 유지 (집계 원본은 store_events)
-  if(s.waiting.list.length>200){
-    const live=s.waiting.list.filter(w=>w.status==='waiting'||w.status==='called');
-    const done=s.waiting.list.filter(w=>w.status!=='waiting'&&w.status!=='called').slice(-150);
-    s.waiting.list=live.concat(done);
-  }
-  if(s.couponPolicy.dailyUseLimit===undefined)s.couponPolicy.dailyUseLimit=2;
+  if(s.couponPolicy.dailyUseLimit===undefined)s.couponPolicy.dailyUseLimit=3;
+  if(s.couponPolicy.dailyUseLimit===2)s.couponPolicy.dailyUseLimit=3; // 옛 기본값(2) 자동 상향 — 사장님이 직접 다른 값으로 바꾼 매장은 그대로 둠
   if(s.couponPolicy.unusedWarnAt===undefined)s.couponPolicy.unusedWarnAt=5;
+  if(s.couponPolicy.mainDailyLimit===undefined)s.couponPolicy.mainDailyLimit=1;
   return s;
 }
 Object.keys(storesDB).forEach(k=>{storesDB[k]=migrateStore(storesDB[k])});
@@ -3269,285 +3240,6 @@ function closeDiceReveal(){
    75초 자동 체류검증을 놓친 경우의 구제 수단. 무분별한 충전을 막기 위해
    승인번호가 맞아야만 지급되고, 성공/실패 모두 STORE.staffLogs에 남는다
    (부정 수급 방지 — 사장님이 관리자 화면에서 전부 확인 가능). */
-/* ════════════════════ 🪑 웨이팅 관리 엔진 ════════════════════
-   설계 요지: 웨이팅은 원래 100% 마이너스 경험이다. 이걸 "기다린 대가"로 바꿔
-   주사위·쿠폰을 지급하면, 쿠폰 일일 사용 한도 때문에 다 못 쓴 보상이 지갑에 쌓이고
-   그게 재방문 이유가 된다. 즉 대기 시간을 재방문 자산으로 전환하는 장치. */
-function _wcfg(){
-  if(!STORE.waiting)STORE.waiting={enabled:false,open:false,avgMin:12,compensateAfterMin:30,
-    compensateType:'dice',compensateDice:1,compensateCoupon:'음료 1잔 무료',maxTeams:0,list:[]};
-  if(!Array.isArray(STORE.waiting.list))STORE.waiting.list=[];
-  return STORE.waiting;
-}
-// 아직 자리를 안 받은 팀 = 대기중 + 호출됨 (호출됐어도 아직 안 앉았으면 줄에 있는 것)
-function waitingActive(){
-  return _wcfg().list.filter(w=>w.status==='waiting'||w.status==='called');
-}
-function waitingAheadOf(id){
-  const act=waitingActive();
-  const i=act.findIndex(w=>w.id===id);
-  return i<0?0:i;
-}
-function waitingEtaMin(aheadCount){
-  const cfg=_wcfg();
-  return Math.max(0,Math.round(aheadCount*(+cfg.avgMin||12)));
-}
-function waitedMinutesOf(w){
-  const end=w.endedAt||Date.now();
-  return Math.max(0,Math.floor((end-(w.joinedAt||end))/60000));
-}
-function _wGenId(){return 'W'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
-
-// 손님 등록. 전화번호가 기존 고객이면 연결하고, 없으면 새 고객으로 추가해 CRM 자산으로 축적한다.
-function waitingRegister(name,phone,people,marketing){
-  const cfg=_wcfg();
-  if(!cfg.open)return{error:'closed'};
-  const digits=(phone||'').replace(/-/g,'');
-  if(!name||!digits)return{error:'invalid'};
-  // 같은 번호가 이미 줄에 있으면 중복 등록 방지 (새로고침·재스캔 대비)
-  const dup=waitingActive().find(w=>(w.phone||'').replace(/-/g,'')===digits);
-  if(dup)return{ok:true,entry:dup,dup:true};
-  if(+cfg.maxTeams>0&&waitingActive().length>=+cfg.maxTeams)return{error:'full'};
-
-  let user=(STORE.users||[]).find(u=>(u.phone||'').replace(/-/g,'')===digits);
-  if(!user){
-    user={id:'u'+Date.now(),name,phone,marketing:!!marketing,joined:today(),visits:0,nameHistory:[]};
-    if(marketing)user.marketingConsentAt=nowStr();
-    STORE.users.push(user);
-  }else if(marketing&&!user.marketing){
-    user.marketing=true;user.marketingConsentAt=nowStr();
-  }
-  const entry={id:_wGenId(),name,phone,people:+people||1,joinedAt:Date.now(),
-    status:'waiting',calledAt:null,endedAt:null,waitedMin:null,compensated:false,uid:user.id};
-  cfg.list.push(entry);
-  saveState();
-  upsertCustomer(user);
-  logEvent('waiting_join',{people:entry.people,aheadTeams:waitingAheadOf(entry.id)});
-  return{ok:true,entry};
-}
-function waitingCancel(id){
-  const w=_wcfg().list.find(x=>x.id===id);
-  if(!w)return;
-  w.status='cancelled';w.endedAt=Date.now();w.waitedMin=waitedMinutesOf(w);
-  saveState();
-  logEvent('waiting_done',{status:'cancelled',waitedMin:w.waitedMin});
-}
-function waitingCall(id){
-  const w=_wcfg().list.find(x=>x.id===id);
-  if(!w)return null;
-  w.status='called';w.calledAt=Date.now();
-  saveState();
-  logEvent('waiting_called',{waitedMin:waitedMinutesOf(w)});
-  return w;
-}
-/* 착석 처리 = 보상 판정 시점.
-   기준 시간을 넘겼으면 주사위 또는 쿠폰을 지급한다. compensated 플래그로 1회만. */
-function waitingSeat(id){
-  const cfg=_wcfg();
-  const w=cfg.list.find(x=>x.id===id);
-  if(!w)return null;
-  w.status='seated';w.endedAt=Date.now();w.waitedMin=waitedMinutesOf(w);
-  let reward=null;
-  const limit=+cfg.compensateAfterMin||0;
-  if(!w.compensated&&limit>0&&w.waitedMin>=limit&&cfg.compensateType!=='none'&&w.uid){
-    if(cfg.compensateType==='dice'){
-      const n=Math.max(1,+cfg.compensateDice||1);
-      if(!STORE.diceState)STORE.diceState={};
-      if(!STORE.diceState[w.uid])STORE.diceState[w.uid]={pos:0,dice:0,laps:0,missionsDone:[],againToday:0,lastDate:''};
-      STORE.diceState[w.uid].dice=(STORE.diceState[w.uid].dice||0)+n;
-      reward={kind:'dice',amount:n};
-    }else{
-      const nm=cfg.compensateCoupon||'음료 1잔 무료';
-      STORE.coupons.unshift({id:genId(),uid:w.uid,name:'🪑 대기 보상: '+nm,benefit:nm,
-        expires:expDate(30),cond:'직원 확인 후 제공',status:'available',created:today(),staffCheck:true});
-      reward={kind:'coupon',name:nm};
-    }
-    w.compensated=true;
-    if(!STORE.staffLogs)STORE.staffLogs=[];
-    STORE.staffLogs.unshift({name:'🪑 대기 보상('+w.waitedMin+'분) '+(reward.kind==='dice'?('주사위 '+reward.amount+'개'):reward.name),
-      date:today(),datetime:nowStr(),id:'WAIT-REWARD',customer:w.name,staff:currentStaff?.name||'사장님'});
-  }
-  saveState();
-  logEvent('waiting_done',{status:'seated',waitedMin:w.waitedMin,compensated:!!w.compensated});
-  return{entry:w,reward};
-}
-function waitingNoshow(id){
-  const w=_wcfg().list.find(x=>x.id===id);
-  if(!w)return;
-  w.status='noshow';w.endedAt=Date.now();w.waitedMin=waitedMinutesOf(w);
-  saveState();
-  logEvent('waiting_done',{status:'noshow',waitedMin:w.waitedMin});
-}
-
-/* ── 🪑 손님 화면 ── */
-function _wMyKey(){return 'rp_wait_'+STORE_ID;}
-function waitingMyEntry(){
-  try{
-    const id=localStorage.getItem(_wMyKey());
-    if(!id)return null;
-    const w=_wcfg().list.find(x=>x.id===id);
-    if(!w||w.status==='cancelled'||w.status==='noshow')return null;
-    // 착석 후에도 잠깐은 보여준다(보상 안내). 2시간 지나면 정리
-    if(w.status==='seated'&&Date.now()-(w.endedAt||0)>2*3600000)return null;
-    return w;
-  }catch(e){return null;}
-}
-function renderWaitingRegister(){
-  const cfg=_wcfg();
-  const el=document.getElementById('waiting-reg-body');
-  const mine=waitingMyEntry();
-  if(mine){show('s-waiting-status');return;}
-  const teams=waitingActive().length;
-  const eta=waitingEtaMin(teams);
-  if(!cfg.enabled||!cfg.open){
-    el.innerHTML=`<div style="text-align:center;padding:40px 10px">
-      <img src="${PENGUIN_IDLE_SRC}" alt="펭귄" style="height:120px;width:auto;opacity:.9">
-      <div style="font-size:19px;font-weight:900;color:var(--t1);margin-top:14px">지금은 웨이팅 접수를<br>받고 있지 않아요</div>
-      <div style="font-size:13px;color:var(--t3);margin-top:8px;line-height:1.7">바로 입장하실 수 있어요.<br>직원에게 문의해주세요 😊</div>
-      <button class="btn btn-blue" style="margin-top:20px" onclick="show('s-landing')">매장 이벤트 보러가기</button>
-    </div>`;
-    return;
-  }
-  const full=(+cfg.maxTeams>0&&teams>=+cfg.maxTeams);
-  el.innerHTML=`
-    <div style="text-align:center;margin-bottom:18px">
-      <img src="${PENGUIN_IDLE_SRC}" alt="펭귄" style="height:96px;width:auto">
-      <div style="font-size:21px;font-weight:900;color:var(--t1);margin-top:8px">${STORE.profile.name}</div>
-    </div>
-    <div style="display:flex;gap:10px;margin-bottom:18px">
-      <div class="w-gold" style="flex:1;border-radius:16px;padding:16px 12px;text-align:center">
-        <div style="font-size:11px;font-weight:800">현재 대기</div>
-        <div style="font-size:28px;font-weight:900;line-height:1.2">${teams}<span style="font-size:14px">팀</span></div>
-      </div>
-      <div class="w-blue" style="flex:1;border-radius:16px;padding:16px 12px;text-align:center">
-        <div style="font-size:11px;font-weight:800">예상 시간</div>
-        <div style="font-size:28px;font-weight:900;line-height:1.2">${eta}<span style="font-size:14px">분</span></div>
-      </div>
-    </div>
-    ${full?`<div class="error-msg">지금은 대기가 가득 찼어요. 잠시 후 다시 시도해주세요.</div>`:`
-    <div class="field"><label>이름</label><input id="w-name" placeholder="홍길동" maxlength="20"></div>
-    <div class="field"><label>휴대폰 번호</label><input id="w-phone" inputmode="numeric" placeholder="010-0000-0000" maxlength="13"></div>
-    <div class="field"><label>인원</label>
-      <select id="w-people" style="width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:14px;background:var(--white);color:var(--t1);font-family:Noto Sans KR,sans-serif">
-        ${[1,2,3,4,5,6,7,8].map(n=>`<option value="${n}"${n===2?' selected':''}>${n}명</option>`).join('')}
-        <option value="9">9명 이상</option>
-      </select>
-    </div>
-    <label style="display:flex;align-items:flex-start;gap:9px;margin:14px 0 6px;cursor:pointer">
-      <input type="checkbox" id="w-marketing" style="width:18px;height:18px;margin-top:1px;accent-color:var(--blue);flex-shrink:0">
-      <span style="font-size:12.5px;color:var(--t2);line-height:1.6">(선택) 매장 소식·혜택 문자 받기에 동의합니다</span>
-    </label>
-    <div style="font-size:11px;color:var(--t4);line-height:1.6;margin-bottom:14px">순서가 되면 입력하신 번호로 안내 문자를 보내드려요.<br>번호는 대기 안내 목적으로만 사용됩니다.</div>
-    <div id="w-error"></div>
-    <button class="btn btn-blue" onclick="submitWaiting()">🪑 웨이팅 등록하기</button>
-    ${(+cfg.compensateAfterMin>0&&cfg.compensateType!=='none')?`
-    <div class="w-gold" style="margin-top:14px;border-radius:14px;padding:13px 14px;font-size:12.5px;line-height:1.7">
-      🎁 <b>${cfg.compensateAfterMin}분 이상</b> 기다리시면<br>
-      ${cfg.compensateType==='dice'?`주사위 <b>${cfg.compensateDice||1}개</b>를 드려요 (게임에서 상품 당첨!)`:`<b>${cfg.compensateCoupon}</b> 쿠폰을 드려요`}
-    </div>`:''}
-    `}`;
-  const ph=document.getElementById('w-phone');
-  if(ph)ph.addEventListener('input',function(){this.value=formatPhone(this.value)});
-}
-function submitWaiting(){
-  const name=(document.getElementById('w-name').value||'').trim();
-  const phone=(document.getElementById('w-phone').value||'').trim();
-  const people=document.getElementById('w-people').value;
-  const marketing=document.getElementById('w-marketing').checked;
-  const err=document.getElementById('w-error');
-  if(!name){err.innerHTML='<div class="error-msg">이름을 입력해주세요</div>';return}
-  if(!validatePhone(phone)){err.innerHTML='<div class="error-msg">올바른 휴대폰 번호를 입력해주세요</div>';return}
-  err.innerHTML='';
-  const r=waitingRegister(name,phone,people,marketing);
-  if(r.error==='closed'){toast('지금은 접수가 마감되었어요');renderWaitingRegister();return}
-  if(r.error==='full'){toast('대기가 가득 찼어요');renderWaitingRegister();return}
-  if(r.error){toast('등록에 실패했어요. 다시 시도해주세요');return}
-  try{localStorage.setItem(_wMyKey(),r.entry.id);}catch(e){}
-  show('s-waiting-status');
-}
-let _wTimer=null;
-function renderWaitingStatus(){
-  const el=document.getElementById('waiting-status-body');
-  const w=waitingMyEntry();
-  if(!w){show('s-waiting');return;}
-  const cfg=_wcfg();
-  const ahead=waitingAheadOf(w.id);
-  const eta=waitingEtaMin(ahead);
-  const waited=waitedMinutesOf(w);
-  const willReward=(+cfg.compensateAfterMin>0&&cfg.compensateType!=='none');
-
-  if(w.status==='seated'){
-    el.innerHTML=`<div style="text-align:center;padding:26px 10px">
-      <img src="${PENGUIN_JUMP_SRC}" alt="펭귄" style="height:130px;width:auto">
-      <div style="font-size:22px;font-weight:900;color:var(--t1);margin-top:10px">입장 완료! 🎉</div>
-      <div style="font-size:13px;color:var(--t3);margin-top:8px">${waited}분 기다려주셔서 감사합니다</div>
-      ${w.compensated?`<div class="w-gold" style="margin-top:18px;border-radius:16px;padding:16px">
-        <div style="font-size:14px;font-weight:900">🎁 기다려주신 보상이 지급됐어요</div>
-        <div style="font-size:12.5px;margin-top:5px">${cfg.compensateType==='dice'?'주사위가 충전됐어요! 게임에서 상품을 받아가세요':'쿠폰함을 확인해주세요'}</div>
-      </div>
-      <button class="btn btn-blue" style="margin-top:16px" onclick="show('s-landing')">${cfg.compensateType==='dice'?'🎲 게임하러 가기':'🎟️ 쿠폰 확인하기'}</button>`
-      :`<button class="btn btn-blue" style="margin-top:20px" onclick="show('s-landing')">매장 이벤트 보러가기</button>`}
-    </div>`;
-    return;
-  }
-  const called=w.status==='called';
-  el.innerHTML=`
-    <div style="text-align:center">
-      <div style="display:inline-flex;align-items:center;gap:6px;background:${called?'var(--green-light)':'var(--blue-light)'};color:${called?'#00a868':'var(--blue)'};border-radius:999px;padding:6px 15px;font-size:12px;font-weight:800;margin-bottom:14px">
-        ${called?'🔔 입장 순서예요!':'⏳ 대기 중'}
-      </div>
-      <img src="${called?PENGUIN_JUMP_SRC:PENGUIN_IDLE_SRC}" alt="펭귄" style="height:${called?126:104}px;width:auto;display:block;margin:0 auto">
-      ${called?`<div style="font-size:23px;font-weight:900;color:var(--t1);margin-top:10px">지금 입장해주세요!</div>
-        <div style="font-size:13px;color:var(--t3);margin-top:6px;line-height:1.7">카운터에서 <b>${w.name}</b>님으로 말씀해주세요</div>`
-      :`<div style="font-size:14px;color:var(--t3);margin-top:10px">내 앞에</div>
-        <div style="font-size:46px;font-weight:900;color:var(--t1);line-height:1.1">${ahead}<span style="font-size:20px">팀</span></div>
-        <div style="font-size:14px;color:var(--t3);margin-top:2px">예상 <b style="color:var(--blue)">약 ${eta}분</b></div>`}
-    </div>
-    <div style="display:flex;gap:10px;margin-top:20px">
-      <div style="flex:1;background:var(--bg);border-radius:14px;padding:13px;text-align:center">
-        <div style="font-size:11px;color:var(--t3);font-weight:700">대기 시작</div>
-        <div style="font-size:15px;font-weight:800;color:var(--t1);margin-top:3px">${new Date(w.joinedAt).toTimeString().slice(0,5)}</div>
-      </div>
-      <div style="flex:1;background:var(--bg);border-radius:14px;padding:13px;text-align:center">
-        <div style="font-size:11px;color:var(--t3);font-weight:700">기다린 시간</div>
-        <div style="font-size:15px;font-weight:800;color:var(--t1);margin-top:3px">${waited}분</div>
-      </div>
-      <div style="flex:1;background:var(--bg);border-radius:14px;padding:13px;text-align:center">
-        <div style="font-size:11px;color:var(--t3);font-weight:700">인원</div>
-        <div style="font-size:15px;font-weight:800;color:var(--t1);margin-top:3px">${w.people}명</div>
-      </div>
-    </div>
-    ${willReward?`<div class="w-gold" style="margin-top:14px;border-radius:14px;padding:13px 14px;font-size:12.5px;line-height:1.7">
-      🎁 ${waited>=(+cfg.compensateAfterMin)
-        ? `<b>보상 대상이에요!</b> 입장하실 때 ${cfg.compensateType==='dice'?`주사위 ${cfg.compensateDice||1}개`:cfg.compensateCoupon}를 드려요`
-        : `<b>${cfg.compensateAfterMin}분</b> 이상 기다리시면 ${cfg.compensateType==='dice'?`주사위 ${cfg.compensateDice||1}개`:cfg.compensateCoupon}를 드려요`}
-    </div>`:''}
-    <div style="font-size:11.5px;color:var(--t4);text-align:center;margin-top:16px;line-height:1.7">순서가 되면 문자로 알려드려요 · 이 화면은 자동으로 갱신돼요</div>
-    <button class="btn" style="margin-top:14px;background:var(--bg);border:1.5px solid var(--border);color:var(--t2);font-weight:700" onclick="cancelMyWaiting()">대기 취소하기</button>
-  `;
-}
-function cancelMyWaiting(){
-  const w=waitingMyEntry();
-  if(!w)return;
-  if(!confirm('대기를 취소할까요?'))return;
-  waitingCancel(w.id);
-  try{localStorage.removeItem(_wMyKey());}catch(e){}
-  toast('대기가 취소되었습니다');
-  show('s-waiting');
-}
-// 대기 화면에서만 주기적으로 최신 상태를 받아온다 (다른 기기에서 사장님이 호출했을 수 있으므로)
-function startWaitingPoll(){
-  stopWaitingPoll();
-  _wTimer=setInterval(async()=>{
-    const scr=window.currentScreenId;
-    if(scr!=='s-waiting-status'&&scr!=='s-waiting'){stopWaitingPoll();return;}
-    try{await _sbSync(STORE_ID);}catch(e){}
-    if(window.currentScreenId==='s-waiting-status')renderWaitingStatus();
-    else if(window.currentScreenId==='s-waiting')renderWaitingRegister();
-  },20000);
-}
-function stopWaitingPoll(){if(_wTimer){clearInterval(_wTimer);_wTimer=null;}}
-
 function openDiceChargeModal(){
   if(!currentUser){toast('로그인 후 이용해주세요');return}
   document.getElementById('dice-charge-pin').value='';
@@ -4050,9 +3742,6 @@ function show(id){
   if(currentUser&&id!=='s-login'&&id!=='s-landing')saveSession();
   if(id==='s-platform')renderPlatform();
   if(id==='s-staff-check')renderStaffLog();
-  if(id==='s-waiting'){renderWaitingRegister();startWaitingPoll();}
-  else if(id==='s-waiting-status'){renderWaitingStatus();startWaitingPoll();}
-  else stopWaitingPoll();
   const navMap={'s-home':'home','s-coupons':'coupons','s-stamp':'stamp','s-myinfo':'myinfo'};
   document.querySelectorAll('.bni').forEach(b=>b.classList.toggle('on',b.dataset.nav===navMap[id]));
   window.scrollTo(0,0);
@@ -5851,8 +5540,9 @@ function renderQR(elId,text){
 }
 function sCTab(tab,el){document.querySelectorAll('[id^="ctab"]').forEach(b=>b.className='chip off');el.className='chip on';if(tab==='available')_selCoupIds=new Set();renderCoupons(tab)}
 function toggleCoupSel(id){
+  const _cap=+(_couponPolicy().dailyUseLimit||3);
   if(_selCoupIds.has(id)){_selCoupIds.delete(id);}
-  else{if(_selCoupIds.size>=3){toast('오늘 사용할 쿠폰은 최대 3개까지 선택 가능해요');return;}_selCoupIds.add(id);}
+  else{if(_selCoupIds.size>=_cap){toast('오늘 사용할 쿠폰은 최대 '+_cap+'개까지 선택 가능해요');return;}_selCoupIds.add(id);}
   renderCoupons('available');
 }
 function renderCoupons(tab){
@@ -5911,7 +5601,10 @@ function ownerConfirmCoupon(cid){
   const c=STORE.coupons.find(x=>x.id===cid);
   if(!c||c.status!=='available'){toast('이미 처리되었거나 사용할 수 없는 쿠폰입니다');return}
   const _olim=checkCouponDailyLimit(c.uid,c);
-  if(!_olim.ok){toast('오늘 '+_olim.used+'개를 사용하셨어요. 쿠폰은 하루 '+_olim.lim+'개까지만 사용 가능합니다');return}
+  if(!_olim.ok){
+    toast(_olim.mainBlocked?'메인(메인메뉴·식사권) 상품은 하루 '+_olim.mainLim+'개까지만 사용 가능합니다. 사이드·음료 등 다른 쿠폰을 먼저 사용해주세요':'오늘 '+_olim.used+'개를 사용하셨어요. 쿠폰은 하루 '+_olim.lim+'개까지만 사용 가능합니다');
+    return;
+  }
   c.status='used';c.used_at=today();c.used_at_time=nowStr();c.staff='사장님 직접확인';
   logEvent('coupon_used',{name:c.name,by:'owner',uid_target:c.uid});
   const ownCpnUser=STORE.users.find(u=>u.id===c.uid);
@@ -6022,17 +5715,34 @@ function grantStamp(reason){
    원가 0원인 스탬프 적립권은 한도에서 제외 — 포함하면 공짜 쿠폰이 한도를 잡아먹어
    손님은 손해 본 기분, 사장님은 이득도 없는 상황이 된다. */
 function _couponPolicy(){
-  if(!STORE.couponPolicy)STORE.couponPolicy={dailyUseLimit:2,unusedWarnAt:5};
+  if(!STORE.couponPolicy)STORE.couponPolicy={dailyUseLimit:3,unusedWarnAt:5,mainDailyLimit:1};
+  if(STORE.couponPolicy.mainDailyLimit===undefined)STORE.couponPolicy.mainDailyLimit=1;
   return STORE.couponPolicy;
 }
 function countTodayUsedCoupons(uid){
   const t=today();
   return (STORE.coupons||[]).filter(c=>c.uid===uid&&c.status==='used'&&c.used_at===t&&!c.grantsStamp).length;
 }
+// '메인' 상품(메인메뉴·식사권 등 고가 보상)인지 이름/혜택 문구로 판별한다.
+// 메인만 골라 하루 한도를 다 채우면 원가 통제가 깨지므로, 사이드/음료/스탬프 등과 섞어 쓰게 유도한다.
+function isMainTierCoupon(c){
+  const t=((c&&c.name)||'')+' '+((c&&c.benefit)||'');
+  return /메인|식사권/.test(t);
+}
+function countTodayUsedMainCoupons(uid){
+  const t=today();
+  return (STORE.coupons||[]).filter(c=>c.uid===uid&&c.status==='used'&&c.used_at===t&&!c.grantsStamp&&isMainTierCoupon(c)).length;
+}
 function checkCouponDailyLimit(uid,coupon){
+  if(coupon&&coupon.grantsStamp)return{ok:true,exempt:true}; // 스탬프 적립권은 한도 제외
+  // 메인 상품(메인메뉴·식사권)은 하루 최대 mainDailyLimit개까지만 — "메인만 골라먹기" 방지
+  const mainLim=+(_couponPolicy().mainDailyLimit);
+  if(mainLim&&isMainTierCoupon(coupon)){
+    const usedMain=countTodayUsedMainCoupons(uid);
+    if(usedMain>=mainLim)return{ok:false,mainBlocked:true,usedMain,mainLim};
+  }
   const lim=+(_couponPolicy().dailyUseLimit||0);
   if(!lim)return{ok:true,lim:0};                        // 0 = 무제한
-  if(coupon&&coupon.grantsStamp)return{ok:true,lim,exempt:true}; // 스탬프 적립권은 한도 제외
   const used=countTodayUsedCoupons(uid);
   return{ok:used<lim,used,lim};
 }
@@ -7352,7 +7062,9 @@ function useCpn(cid){
   if(!c||c.status!=='available'){toast('사용할 수 없는 쿠폰입니다');return}
   const _lim=checkCouponDailyLimit(c.uid,c);
   if(!_lim.ok){
-    document.getElementById('chk-result').innerHTML=`<div class="card card-pad" style="background:var(--yellow-light,#fff8e6);text-align:center"><div style="font-size:36px;margin-bottom:8px">🙏</div><div style="font-size:17px;font-weight:900;color:#b45309">오늘 사용 한도에 도달했어요</div><div style="font-size:13px;color:var(--t2);margin-top:8px;line-height:1.6">이 고객님은 오늘 이미 <b>${_lim.used}개</b>를 사용하셨어요.<br>쿠폰은 하루 <b>${_lim.lim}개</b>까지 사용할 수 있어요.<br><span style="color:var(--t3)">남은 쿠폰은 다음 방문 때 사용해주세요!</span></div></div>`;
+    document.getElementById('chk-result').innerHTML=_lim.mainBlocked
+      ?`<div class="card card-pad" style="background:var(--yellow-light,#fff8e6);text-align:center"><div style="font-size:36px;margin-bottom:8px">🍽️</div><div style="font-size:17px;font-weight:900;color:#b45309">메인 상품은 하루 ${_lim.mainLim}개까지예요</div><div style="font-size:13px;color:var(--t2);margin-top:8px;line-height:1.6">메인메뉴·식사권 같은 메인 상품은 이미 오늘 <b>${_lim.mainLim}개</b> 사용하셨어요.<br><span style="color:var(--t3)">사이드·음료 등 다른 쿠폰을 먼저 사용해주세요!</span></div></div>`
+      :`<div class="card card-pad" style="background:var(--yellow-light,#fff8e6);text-align:center"><div style="font-size:36px;margin-bottom:8px">🙏</div><div style="font-size:17px;font-weight:900;color:#b45309">오늘 사용 한도에 도달했어요</div><div style="font-size:13px;color:var(--t2);margin-top:8px;line-height:1.6">이 고객님은 오늘 이미 <b>${_lim.used}개</b>를 사용하셨어요.<br>쿠폰은 하루 <b>${_lim.lim}개</b>까지 사용할 수 있어요.<br><span style="color:var(--t3)">남은 쿠폰은 다음 방문 때 사용해주세요!</span></div></div>`;
     return;
   }
   c.status='used';c.used_at=today();c.used_at_time=nowStr();c.staff=currentStaff?.code;
@@ -7858,8 +7570,6 @@ function renderAdmin(tab){
     loadFunnelStats();
   }else if(tab==='customers'){
     renderCustomersTab(el);
-  }else if(tab==='waiting'){
-    renderWaitingAdmin(el);
   }else if(tab==='qr'){
     const officialUrl=buildStoreUrl(STORE_ID);
     if(!STORE.setupChecklist.qrConfirmed){STORE.setupChecklist.qrConfirmed=true;saveState();} // QR 탭을 열어봤다는 것 자체가 확인
@@ -8639,137 +8349,6 @@ function _funnelHtml(sum){
   }).join('')+
   `<div style="font-size:10.5px;color:var(--t4);margin-top:8px;line-height:1.6">오른쪽 %는 <b>바로 위 단계 대비 전환율</b>이에요. 낮은 구간이 지금 개선 포인트입니다.</div>`;
 }
-/* ── 🪑 사장님 웨이팅 관리 ── */
-function renderWaitingAdmin(el){
-  const cfg=_wcfg();
-  const act=waitingActive();
-  const doneToday=cfg.list.filter(w=>w.status==='seated'&&w.endedAt&&(new Date(w.endedAt)).toDateString()===new Date().toDateString());
-  const avgWaited=doneToday.length?Math.round(doneToday.reduce((a,w)=>a+(w.waitedMin||0),0)/doneToday.length):0;
-  const waitUrl=buildStoreUrl(STORE_ID)+'&w=1';
-
-  el.innerHTML=`
-    <div class="card card-pad" style="border-color:${cfg.open?'var(--green)':'var(--border)'};margin-bottom:12px">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-        <div>
-          <div style="font-size:15px;font-weight:800;color:var(--t1)">${cfg.open?'🟢 웨이팅 접수 중':'⚪ 접수 중지'}</div>
-          <div style="font-size:12px;color:var(--t3);margin-top:2px">${cfg.open?'손님이 QR로 대기를 등록할 수 있어요':'풀테이블일 때 켜주세요'}</div>
-        </div>
-        <button class="btn btn-sm" style="width:auto;padding:11px 18px;background:${cfg.open?'var(--red)':'var(--green)'};color:#fff;font-weight:800" onclick="toggleWaitingOpen()">${cfg.open?'접수 중지':'접수 시작'}</button>
-      </div>
-    </div>
-
-    <div class="stat-row" style="margin-bottom:12px">
-      <div class="stat-cell"><div class="stat-num">${act.length}</div><div class="stat-label">현재 대기 팀</div></div>
-      <div class="stat-cell"><div class="stat-num">${doneToday.length}</div><div class="stat-label">오늘 입장</div></div>
-      <div class="stat-cell"><div class="stat-num">${avgWaited}<span style="font-size:13px">분</span></div><div class="stat-label">평균 대기</div></div>
-    </div>
-
-    <div class="card" style="margin-bottom:12px">
-      <div class="section-label">대기 목록 ${act.length?`(${act.length}팀)`:''}</div>
-      ${act.length?act.map((w,i)=>{
-        const waited=waitedMinutesOf(w);
-        const over=(+cfg.compensateAfterMin>0&&waited>=+cfg.compensateAfterMin&&cfg.compensateType!=='none');
-        const msg='['+STORE.profile.name+'] '+w.name+'님, 자리가 준비되었습니다! 카운터로 와주세요 😊';
-        return `<div class="admin-row" style="align-items:flex-start">
-          <div style="width:30px;height:30px;border-radius:50%;background:${w.status==='called'?'var(--green)':'var(--blue)'};color:#fff;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:10px">${i+1}</div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:14px;font-weight:700;color:var(--t1)">${w.name} <span style="font-size:12px;color:var(--t3);font-weight:500">${w.people}명</span>
-              ${w.status==='called'?'<span class="li-badge badge-green" style="margin-left:4px">호출됨</span>':''}
-              ${over?'<span class="li-badge badge-yellow" style="margin-left:4px">🎁 보상대상</span>':''}</div>
-            <div style="font-size:12px;color:var(--t3);margin-top:2px">${w.phone} · ${waited}분 대기</div>
-            <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
-              <a href="sms:${(w.phone||'').replace(/-/g,'')}?body=${encodeURIComponent(msg)}" onclick="markWaitingCalled('${w.id}')" style="text-decoration:none">
-                <span class="btn-ghost" style="display:inline-block;width:auto;padding:7px 12px;font-size:12px;font-weight:700;background:var(--blue-light);color:var(--blue);border-color:var(--blue);border-radius:9px">📩 호출 문자</span></a>
-              <button class="btn-ghost" style="width:auto;padding:7px 12px;font-size:12px;font-weight:700;background:var(--green-light);color:#00a868;border-color:var(--green);border-radius:9px" onclick="seatWaiting('${w.id}')">✅ 착석</button>
-              <button class="btn-ghost" style="width:auto;padding:7px 12px;font-size:12px;color:var(--t3);border-radius:9px" onclick="noshowWaiting('${w.id}')">노쇼</button>
-            </div>
-          </div>
-        </div>`;
-      }).join('')
-      :`<div style="padding:20px;text-align:center;font-size:13.5px;color:var(--t4)">대기 중인 팀이 없어요</div>`}
-    </div>
-
-    <div class="card card-pad" style="margin-bottom:12px">
-      <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px">🪑 웨이팅 전용 QR</div>
-      <div style="font-size:12px;color:var(--t3);margin-bottom:10px;line-height:1.6">게임 QR과 <b>다른 종이</b>에 붙여주세요. 이 QR은 바로 대기 접수 화면으로 연결됩니다.</div>
-      <div style="text-align:center;background:var(--bg);border-radius:12px;padding:14px"><div id="waiting-qr"></div></div>
-      <div style="font-size:11px;color:var(--t4);margin-top:8px;word-break:break-all">${waitUrl}</div>
-      <button class="btn btn-blue btn-sm" style="margin-top:10px;width:auto" onclick="downloadWaitingQR()">QR 다운로드</button>
-    </div>
-
-    <div class="card card-pad">
-      <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:12px">⚙️ 웨이팅 설정</div>
-      <div class="field"><label>팀당 예상 소요 시간(분)</label>
-        <input id="w-avgmin" type="number" min="1" max="120" value="${cfg.avgMin||12}">
-        <div style="font-size:11px;color:var(--t4);margin-top:4px">예상 시간은 <b>실제보다 살짝 넉넉하게</b> 잡는 게 좋아요 — 빨리 부르면 만족, 늦게 부르면 불만이라서요.</div>
-      </div>
-      <div class="field"><label>동시 접수 최대 팀 수 <span style="font-size:11px;color:var(--t3)">0 = 무제한</span></label>
-        <input id="w-maxteams" type="number" min="0" max="99" value="${cfg.maxTeams||0}"></div>
-      <div class="field"><label>보상 기준 시간(분) <span style="font-size:11px;color:var(--t3)">0 = 보상 안 함</span></label>
-        <input id="w-compmin" type="number" min="0" max="180" value="${cfg.compensateAfterMin||0}"></div>
-      <div class="field"><label>보상 방식</label>
-        <select id="w-comptype" style="width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:14px;background:var(--white);color:var(--t1);font-family:Noto Sans KR,sans-serif">
-          <option value="dice"${cfg.compensateType==='dice'?' selected':''}>🎲 주사위 지급 (게임 참여 유도)</option>
-          <option value="coupon"${cfg.compensateType==='coupon'?' selected':''}>🎟️ 쿠폰 지급</option>
-          <option value="none"${cfg.compensateType==='none'?' selected':''}>보상 없음</option>
-        </select></div>
-      <div class="field"><label>주사위 개수</label><input id="w-compdice" type="number" min="1" max="5" value="${cfg.compensateDice||1}"></div>
-      <div class="field" style="margin-bottom:14px"><label>쿠폰 내용</label><input id="w-compcpn" value="${(cfg.compensateCoupon||'').replace(/"/g,'&quot;')}" placeholder="예) 음료 1잔 무료"></div>
-      <button class="btn btn-blue" onclick="saveWaitingSettings()">설정 저장</button>
-      <div style="font-size:11.5px;color:var(--t3);margin-top:12px;line-height:1.7;background:var(--bg);border-radius:10px;padding:11px 12px">
-        💡 <b>왜 보상을 주나요?</b><br>기다림은 원래 마이너스 경험이에요. 여기에 보상을 얹으면 손님 지갑에 쿠폰·주사위가 쌓이고,
-        쿠폰은 하루 <b>${(STORE.couponPolicy&&STORE.couponPolicy.dailyUseLimit)||2}개</b>까지만 쓸 수 있어서 남은 건 다음 방문 이유가 됩니다.
-      </div>
-    </div>
-  `;
-  setTimeout(()=>{
-    const q=document.getElementById('waiting-qr');
-    if(q&&typeof QRCode!=='undefined'){q.innerHTML='';try{new QRCode(q,{text:waitUrl,width:170,height:170,colorDark:'#191f28',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.H})}catch(e){}}
-  },120);
-}
-function toggleWaitingOpen(){
-  const cfg=_wcfg();
-  cfg.open=!cfg.open;
-  if(cfg.open)cfg.enabled=true;   // 접수를 시작하면 기능도 자동으로 켠다
-  saveState();
-  renderWaitingAdmin(document.getElementById('admin-body'));
-  toast(cfg.open?'🟢 웨이팅 접수를 시작했어요':'접수를 중지했어요');
-}
-function markWaitingCalled(id){
-  waitingCall(id);
-  setTimeout(()=>renderWaitingAdmin(document.getElementById('admin-body')),400);
-}
-function seatWaiting(id){
-  const r=waitingSeat(id);
-  renderWaitingAdmin(document.getElementById('admin-body'));
-  if(r&&r.reward){
-    toast(r.reward.kind==='dice'?`🎁 ${r.entry.waitedMin}분 대기 · 주사위 ${r.reward.amount}개 지급`:`🎁 ${r.entry.waitedMin}분 대기 · ${r.reward.name} 쿠폰 지급`);
-  }else{
-    toast('착석 처리했어요');
-  }
-}
-function noshowWaiting(id){
-  if(!confirm('노쇼로 처리할까요?'))return;
-  waitingNoshow(id);
-  renderWaitingAdmin(document.getElementById('admin-body'));
-}
-function saveWaitingSettings(){
-  const cfg=_wcfg();
-  cfg.avgMin=Math.max(1,+document.getElementById('w-avgmin').value||12);
-  cfg.maxTeams=Math.max(0,+document.getElementById('w-maxteams').value||0);
-  cfg.compensateAfterMin=Math.max(0,+document.getElementById('w-compmin').value||0);
-  cfg.compensateType=document.getElementById('w-comptype').value;
-  cfg.compensateDice=Math.max(1,+document.getElementById('w-compdice').value||1);
-  cfg.compensateCoupon=(document.getElementById('w-compcpn').value||'').trim()||'음료 1잔 무료';
-  saveState();
-  toast('웨이팅 설정이 저장되었습니다');
-  renderWaitingAdmin(document.getElementById('admin-body'));
-}
-function downloadWaitingQR(){
-  const cv=document.querySelector('#waiting-qr canvas');
-  if(!cv){toast('QR코드를 먼저 생성해주세요');return}
-  const a=document.createElement('a');a.href=cv.toDataURL('image/png');a.download='waiting-qr-'+STORE_ID+'.png';a.click();
-}
 function renderSettingsAdmin(el){
   const _gameUrl=buildStoreUrl(STORE_ID);
   el.innerHTML=`
@@ -8874,6 +8453,15 @@ function renderSettingsAdmin(el){
         <span style="font-size:13px;color:var(--t3)">개 / 하루 &nbsp;<span style="color:var(--t4)">(0 = 무제한)</span></span>
       </div>
       <div id="cp-limit-preview" style="background:var(--blue-light);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--t1);line-height:1.7;margin-bottom:12px"></div>
+      <div style="border-top:1px solid var(--border2);margin:4px 0 12px;padding-top:12px">
+        <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">🍽️ 그 중 '메인' 상품(메인메뉴·식사권) 한도</div>
+        <div style="font-size:11.5px;color:var(--t3);margin-bottom:10px;line-height:1.6">메인만 골라 하루 한도를 다 채우면 원가가 튀어요. 예) 하루 3개 중 메인 1개까지만 — 나머지는 사이드·음료 등으로 채워야 재방문 이유가 남아요.</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="number" id="cp-main-limit" min="0" max="10" value="${_couponPolicy().mainDailyLimit}"
+            style="width:80px;padding:11px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;font-weight:700;text-align:center;background:var(--white);color:var(--t1);outline:none">
+          <span style="font-size:13px;color:var(--t3)">개 / 하루 &nbsp;<span style="color:var(--t4)">(0 = 제한 없음)</span></span>
+        </div>
+      </div>
       <button class="btn btn-blue" onclick="saveCouponPolicy()">쿠폰 정책 저장</button>
     </div>
 
@@ -8965,7 +8553,9 @@ function saveCrmTemplates(){
 }
 function saveCouponPolicy(){
   const lim=Math.min(10,Math.max(0,+((document.getElementById('cp-daily-limit')||{}).value)||0));
+  const mainLim=Math.min(10,Math.max(0,+((document.getElementById('cp-main-limit')||{}).value)||0));
   _couponPolicy().dailyUseLimit=lim;
+  _couponPolicy().mainDailyLimit=mainLim;
   saveState();
   toast(lim?('쿠폰은 하루 '+lim+'개까지 사용 가능으로 저장됐어요'):'쿠폰 사용 제한을 해제했어요');
   renderSettingsAdmin(document.getElementById('admin-body'));
@@ -9202,17 +8792,7 @@ document.getElementById('s-pin').value='';
   if(STORE&&_p!=='platform')logVisitOnce(); // QR/링크로 매장 화면에 도달한 것 자체를 1회 기록
   // 리뷰 쓰러 나갔다 돌아온 경우: 로그인·화면을 복구해 진행 상황을 잃지 않게 한다
   const _resume=STORE?restoreSession():null;
-  // 🪑 웨이팅 QR(?store=X&w=1)은 게임 QR과 물리적으로 다른 종이라, 전용 화면으로 바로 보낸다
-  const _wParam=new URLSearchParams(location.search).get('w');
   if(_p==='platform'){show('s-platform-login');}
-  else if(STORE&&_wParam==='1'){
-    show(waitingMyEntry()?'s-waiting-status':'s-waiting');
-    _sbSync(STORE_ID).then(()=>{
-      const s=window.currentScreenId;
-      if(s==='s-waiting-status')renderWaitingStatus();
-      else if(s==='s-waiting')renderWaitingRegister();
-    });
-  }
   else if(STORE&&_resume){
     show(_resume);
     setTimeout(resumeDiceDwell,300); // 리뷰 미션 진행 중이었다면 체류 검증 이어서
@@ -9237,7 +8817,6 @@ document.getElementById('s-pin').value='';
         STORE_ID=_storeParam;
         STORE=storesDB[_storeParam];
         logVisitOnce();   // QR 첫 방문(이 기기에 데이터 없던 경우)도 빠짐없이 기록
-        if(_wParam==='1'){show(waitingMyEntry()?'s-waiting-status':'s-waiting');return;}
         renderLanding();show('s-landing');
       } else {
         show('s-notfound');
