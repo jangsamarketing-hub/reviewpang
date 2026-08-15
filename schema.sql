@@ -48,8 +48,11 @@ CREATE TABLE IF NOT EXISTS store_events (
   uid        text,                   -- 고객 id (익명 QR 조회는 NULL)
   meta       jsonb       NOT NULL DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now(),
-  -- 한국 시간 기준 날짜를 미리 계산해 두면 일별 집계가 훨씬 빠르다
-  day        date        GENERATED ALWAYS AS (((created_at AT TIME ZONE 'Asia/Seoul'))::date) STORED
+  -- 한국 시간 기준 날짜를 미리 계산해 두면 일별 집계가 훨씬 빠르다.
+  -- ⚠️ 시간대를 'Asia/Seoul' 같은 '이름'으로 쓰면 안 된다 —
+  --    이름 기반 AT TIME ZONE 은 STABLE 이라 생성 컬럼(IMMUTABLE 필요)에서 거부된다.
+  --    한국은 서머타임이 없어 UTC+9 고정이므로 INTERVAL 로 쓰면 결과가 같으면서 IMMUTABLE 이다.
+  day        date        GENERATED ALWAYS AS (((created_at AT TIME ZONE INTERVAL '9 hours'))::date) STORED
 );
 
 ALTER TABLE store_events DISABLE ROW LEVEL SECURITY;
