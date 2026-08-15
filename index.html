@@ -2750,7 +2750,7 @@ saveStoresDB();
 let STORE_ID=detectStoreId();
 let STORE=storesDB[STORE_ID]||null;
 
-function saveState(){if(STORE){STORE._sbTs=Date.now();storesDB[STORE_ID]=STORE;saveStoresDB();_sbPush(STORE_ID);}}
+function saveState(){if(STORE){STORE._sbTs=Date.now();storesDB[STORE_ID]=STORE;saveStoresDB();_sbPush(STORE_ID);if(typeof invalidateLastVisitIndex==='function')invalidateLastVisitIndex();}}
 
 /* ════════════════════ 🎲 주사위 게임 엔진 (new-game-v2) ════════════════════
    순서: ① 상품 추첨(weight) → ② 그 상품이 있는 칸까지 거리 역산 → ③ 그 거리에 맞는
@@ -6724,16 +6724,42 @@ function markCouponSent(cid){
 let _custFilter='all';
 let _custVisitMode='notvisit'; // 'visited' | 'notvisit'
 let _custDays=21; // 기본: 3주 이상 미방문
+/* ── 고객 목록 렌더링 정책 ──
+   고객이 수천 명이 되면 표를 통째로 그리는 순간 DOM 노드가 수만 개가 되어
+   사장님 폰에서 관리자 화면 자체가 멈춘다. 그래서
+   ① 기본은 '숫자만' 보여주고 목록은 버튼을 눌러야 펼치고
+   ② 펼쳐도 50명씩 끊어서 그린다.
+   선택 상태는 DOM 체크박스가 아니라 Set으로 들고 있어야
+   화면에 안 그려진 고객도 '전체 선택'에 포함된다. */
+const CUST_PAGE_SIZE=50;
+let _custShown=false;      // 목록을 펼쳤는지
+let _custPage=0;           // 현재까지 펼친 페이지 수
+let _custSel=new Set();    // 선택된 고객 id (렌더링과 무관하게 유지)
 
+/* ── 최근 방문일 조회 ──
+   원래는 고객 한 명마다 쿠폰·스핀로그·설문 배열을 통째로 훑었다(고객당 O(전체 데이터)).
+   고객 목록은 필터 1회 + 기간 9칸 카운트로 총 10번 전체 순회를 하기 때문에
+   고객 1만 명 규모에서는 수억 번 연산이 되어 관리자 화면이 그대로 멈춘다.
+   그래서 렌더링 직전에 uid→최근일자 인덱스를 '한 번만' 만들어 두고 그걸 조회한다. */
+let _lvIndex=null;
+function buildLastVisitIndex(){
+  const idx=Object.create(null);
+  const put=(uid,d)=>{if(!uid||!d)return;const v=String(d).slice(0,10);if(!idx[uid]||v>idx[uid])idx[uid]=v;};
+  (STORE.spinLog||[]).forEach(s=>put(s.uid,s.date));
+  (STORE.coupons||[]).forEach(c=>put(c.uid,c.issued));
+  (STORE.surveys||[]).forEach(s=>put(s.userId,s.date));
+  const cards=STORE.stampCards||{};
+  Object.keys(cards).forEach(uid=>{
+    const h=cards[uid]&&cards[uid].history;
+    if(h&&h.length){const l=h[h.length-1];put(uid,l.datetime||l.date);}
+  });
+  (STORE.users||[]).forEach(u=>put(u.id,u.joined));
+  _lvIndex=idx;
+  return idx;
+}
+function invalidateLastVisitIndex(){_lvIndex=null;}
 function getLastVisit(u){
-  // 스탬프 이력 → 스핀 로그 → 쿠폰 발급일 → 설문일 → 가입일 순으로 가장 최근 날짜 반환
-  const sc=STORE.stampCards&&STORE.stampCards[u.id];
-  const stampLast=sc&&sc.history&&sc.history.length?sc.history[sc.history.length-1].datetime||sc.history[sc.history.length-1].date:null;
-  const spinLast=(STORE.spinLog||[]).filter(s=>s.uid===u.id).map(s=>s.date).filter(Boolean).sort().pop()||null;
-  const couponLast=(STORE.coupons||[]).filter(c=>c.uid===u.id&&c.issued).map(c=>c.issued).sort().pop()||null;
-  const surveyLast=(STORE.surveys||[]).filter(s=>s.userId===u.id&&s.date).map(s=>s.date).sort().pop()||null;
-  const dates=[stampLast,spinLast,couponLast,surveyLast,u.joined].filter(Boolean).sort();
-  return dates.length?dates[dates.length-1]:null;
+  return (_lvIndex||buildLastVisitIndex())[u.id]||null;
 }
 
 function daysDiff(dateStr){
@@ -6784,7 +6810,10 @@ function renderCustomersTab(el){
     }).length;
   });
 
-  const rows=filtered.map(u=>{
+  // 화면에 실제로 그릴 만큼만 잘라낸다 (기본은 아예 안 그림)
+  const _visible=_custShown?filtered.slice(0,(_custPage+1)*CUST_PAGE_SIZE):[];
+  const _restCount=filtered.length-_visible.length;
+  const rows=_visible.map(u=>{
     const r=getRank(u.visits||0);
     const lv=getLastVisit(u);const diff=daysDiff(lv);
     const dot=diff>30?'🔴':diff>7?'🟡':'🟢';
@@ -6792,7 +6821,7 @@ function renderCustomersTab(el){
     const diffLabel=diff===9999?'-':(diff===0?dot+' 오늘':dot+' '+dateShort);
     const diffColor=diff>30?'var(--red)':diff>7?'#f5b925':'var(--green)';
     return `<tr style="border-top:1px solid var(--border2)">
-      <td style="padding:10px 8px 10px 12px"><input type="checkbox" class="cust-chk" data-uid="${u.id}" onchange="updateBulkBtn()" style="width:17px;height:17px;accent-color:var(--blue)"></td>
+      <td style="padding:10px 8px 10px 12px"><input type="checkbox" class="cust-chk" data-uid="${u.id}"${_custSel.has(u.id)?' checked':''} onchange="toggleCustSel('${u.id}',this.checked)" style="width:17px;height:17px;accent-color:var(--blue)"></td>
       <td style="padding:10px 8px;font-weight:700;color:var(--t1);white-space:nowrap">${u.name}</td>
       <td style="padding:10px 8px;color:var(--blue);font-weight:600;white-space:nowrap;font-size:12px">${u.phone}</td>
       <td style="padding:10px 4px;text-align:center"><span class="badge-rank" style="font-size:10px">${r.emoji}${r.name}</span></td>
@@ -6830,8 +6859,8 @@ function renderCustomersTab(el){
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
         <div class="section-label" style="padding:0">고객 연락처</div>
         <div style="display:flex;gap:6px">
+          <button class="btn-ghost" style="width:auto;padding:7px 10px;font-size:11px;font-weight:700;color:#1D6F42;border-color:#1D6F42" onclick="downloadStoreExcel()">📗 엑셀 전체</button>
           <button class="btn-ghost" style="width:auto;padding:7px 10px;font-size:11px;font-weight:700" onclick="downloadCustomersCSV()">📊 CSV</button>
-          <button class="btn-ghost" style="width:auto;padding:7px 10px;font-size:11px;font-weight:700" onclick="downloadCustomersTXT()">📄 TXT</button>
         </div>
       </div>
 
@@ -6877,6 +6906,21 @@ function renderCustomersTab(el){
       </div>
     </div>
 
+    ${!filtered.length?`
+    <div class="card card-pad" style="margin:0 16px 12px;text-align:center;color:var(--t4);font-size:13.5px">해당하는 고객이 없습니다</div>`
+    :!_custShown?`
+    <div class="card card-pad" style="margin:0 16px 12px;text-align:center">
+      <div style="font-size:13px;color:var(--t3);line-height:1.7;margin-bottom:12px">
+        조건에 맞는 고객이 <b style="color:var(--t1);font-size:15px">${filtered.length.toLocaleString()}명</b> 있어요.<br>
+        <span style="font-size:11.5px;color:var(--t4)">목록은 필요할 때만 열어요 — 수천 명을 한 번에 그리면 화면이 느려집니다.</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+        <button class="btn btn-blue btn-sm" style="width:auto;padding:11px 18px" onclick="showCustList()">👀 목록 보기 (${Math.min(CUST_PAGE_SIZE,filtered.length)}명씩)</button>
+        <button class="btn-ghost" style="width:auto;padding:11px 16px;font-size:13px;font-weight:700;color:var(--blue);border-color:var(--blue)" onclick="selectAllFiltered()">☑️ ${filtered.length.toLocaleString()}명 전체 선택</button>
+      </div>
+      <div style="font-size:11px;color:var(--t4);margin-top:10px;line-height:1.6">목록을 열지 않아도 <b>전체 선택 → 문자 발송·엑셀 다운로드</b>는 바로 됩니다.</div>
+    </div>`
+    :`
     <div class="card" style="margin:0 16px 12px;overflow-x:auto">
       <table style="width:100%;border-collapse:collapse;font-size:13px">
         <thead><tr style="background:var(--bg)">
@@ -6888,52 +6932,92 @@ function renderCustomersTab(el){
           <th style="padding:10px 4px;text-align:center;color:var(--t3);font-weight:700">충전</th>
           <th style="padding:10px 4px;text-align:center;color:var(--t3);font-weight:700">수신</th>
         </tr></thead>
-        <tbody>${rows||'<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--t4)">해당하는 고객이 없습니다</td></tr>'}</tbody>
+        <tbody>${rows}</tbody>
       </table>
     </div>
-    <div style="padding:0 16px 16px;font-size:11px;color:var(--t4);line-height:1.6">최근방문: 🟢 7일 이내 · 🟡 8~30일 · 🔴 30일 초과</div>
+    <div style="padding:0 16px 12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      ${_restCount>0?`<button class="btn-ghost" style="width:auto;padding:10px 16px;font-size:13px;font-weight:700" onclick="moreCustList()">＋ ${Math.min(CUST_PAGE_SIZE,_restCount)}명 더 보기 <span style="color:var(--t4);font-weight:600">(남은 ${_restCount.toLocaleString()}명)</span></button>`
+        :`<span style="font-size:12px;color:var(--t4)">${filtered.length.toLocaleString()}명 전체를 표시했어요</span>`}
+      <button class="btn-ghost" style="width:auto;padding:10px 14px;font-size:12.5px;font-weight:700;color:var(--t3)" onclick="hideCustList()">목록 접기</button>
+    </div>
+    <div style="padding:0 16px 16px;font-size:11px;color:var(--t4);line-height:1.6">
+      최근방문: 🟢 7일 이내 · 🟡 8~30일 · 🔴 30일 초과 · <b>표시 ${_visible.length.toLocaleString()} / 전체 ${filtered.length.toLocaleString()}명</b>
+    </div>`}
   `;
   renderStaffLog('admin-staff-log');
+  updateBulkBtn();
+}
+/* 목록 펼치기/접기 — 렌더 비용이 큰 표는 사장님이 필요할 때만 그린다 */
+function showCustList(){_custShown=true;_custPage=0;renderCustomersTab(document.getElementById('admin-body'));}
+function moreCustList(){_custPage++;renderCustomersTab(document.getElementById('admin-body'));}
+function hideCustList(){_custShown=false;_custPage=0;renderCustomersTab(document.getElementById('admin-body'));}
+function toggleCustSel(uid,checked){
+  if(checked)_custSel.add(uid);else _custSel.delete(uid);
+  updateBulkBtn();
+}
+// 화면에 안 그려진 고객까지 포함해 '필터에 걸린 전체'를 선택한다
+function currentFilteredUsers(){
+  return (STORE.users||[]).filter(u=>{
+    if(_custDays===0)return true;
+    const diff=daysDiff(getLastVisit(u));
+    return _custVisitMode==='visited'?diff<=_custDays:diff>_custDays;
+  });
+}
+function selectAllFiltered(){
+  currentFilteredUsers().forEach(u=>_custSel.add(u.id));
+  renderCustomersTab(document.getElementById('admin-body'));
+  toast(`${_custSel.size.toLocaleString()}명을 선택했어요`);
 }
 
+/* 필터를 바꾸면 대상 집단 자체가 달라진다.
+   이전 선택을 남겨두면 "3주 미방문 고객에게 보낸다"고 생각하며 엉뚱한 사람에게 발송하는
+   사고가 나므로, 조건이 바뀔 때마다 선택과 펼침 상태를 초기화한다. */
+function _resetCustView(){_custSel.clear();_custPage=0;_custShown=false;}
 function setCustVisitMode(mode){
-  _custVisitMode=mode;_custDays=0;
+  _custVisitMode=mode;_custDays=0;_resetCustView();
   renderCustomersTab(document.getElementById('admin-body'));
 }
 function setCustThisMonth(){
   _custVisitMode='visited';
   const d=new Date();_custDays=d.getDate(); // 이번달 1일부터 = 오늘 날짜 수만큼
+  _resetCustView();
   renderCustomersTab(document.getElementById('admin-body'));
 }
 function setCustDays(days){
-  _custDays=days;
+  _custDays=days;_resetCustView();
   renderCustomersTab(document.getElementById('admin-body'));
 }
 function setCustFilter(key){
-  _custFilter=key;
+  _custFilter=key;_resetCustView();
   renderCustomersTab(document.getElementById('admin-body'));
 }
 
+// 표 헤더의 전체선택은 '필터에 걸린 전체'를 대상으로 한다 (지금 화면에 보이는 50명이 아니라)
 function toggleSelectAll(chk){
-  document.querySelectorAll('.cust-chk').forEach(c=>c.checked=chk.checked);
-  updateBulkBtn();
+  const f=currentFilteredUsers();
+  if(chk.checked)f.forEach(u=>_custSel.add(u.id));
+  else f.forEach(u=>_custSel.delete(u.id));
+  renderCustomersTab(document.getElementById('admin-body'));
 }
 
 function updateBulkBtn(){
-  const checked=document.querySelectorAll('.cust-chk:checked');
+  const n=_custSel.size;
   const bar=document.getElementById('bulk-action-bar');
   const lbl=document.getElementById('bulk-count-label');
-  if(bar){bar.style.display=checked.length?'block':'none';}
-  if(lbl){lbl.textContent=`${checked.length}명 선택됨`;}
+  if(bar){bar.style.display=n?'block':'none';}
+  if(lbl){lbl.textContent=`${n.toLocaleString()}명 선택됨`;}
   const allChk=document.getElementById('chk-all');
-  const total=document.querySelectorAll('.cust-chk').length;
-  if(allChk){allChk.indeterminate=checked.length>0&&checked.length<total;allChk.checked=checked.length===total&&total>0;}
+  if(allChk){
+    const total=currentFilteredUsers().length;
+    allChk.indeterminate=n>0&&n<total;
+    allChk.checked=total>0&&n>=total;
+  }
 }
 
 function getSelectedUsers(){
-  const uids=[...document.querySelectorAll('.cust-chk:checked')].map(c=>c.dataset.uid);
-  return STORE.users.filter(u=>uids.includes(u.id));
+  return (STORE.users||[]).filter(u=>_custSel.has(u.id));
 }
+function clearCustSel(){_custSel.clear();}
 /* ── 광고성 문자 발송 전 법적 확인 ──
    정보통신망법 제50조: 영리목적 광고성 정보는 수신자의 사전 동의(옵트인)를 받은 경우에만 전송할 수 있다.
    미동의 고객에게 보내면 과태료 대상이므로, 발송 대상에서 코드 레벨로 제외한다.
@@ -6942,6 +7026,22 @@ function filterConsentedForAd(users){
   const ok=users.filter(u=>!!u.marketing);
   const blocked=users.length-ok.length;
   return {ok,blocked};
+}
+/* sms: 링크는 수신자를 URL에 전부 붙이는 방식이라 인원이 많으면
+   문자 앱이 열리다 멈추거나 뒷부분이 잘려 일부에게만 전송된다.
+   그래서 일정 인원을 넘으면 먼저 알려주고, 엑셀로 받아 나눠 보내도록 안내한다. */
+const SMS_SAFE_LIMIT=50;
+function smsBatchGuard(targets){
+  if(targets.length<=SMS_SAFE_LIMIT)return targets;
+  const ok=confirm(
+    `선택하신 ${targets.length.toLocaleString()}명은 문자 앱으로 한 번에 보내기 어려워요.\n\n`+
+    `휴대폰 문자 앱은 수신자가 많으면 목록이 잘리거나 앱이 멈춥니다.\n`+
+    `(아이폰은 여러 명을 넣어도 1명만 인식됩니다)\n\n`+
+    `▶ 확인: 앞에서 ${SMS_SAFE_LIMIT}명만 먼저 보냅니다\n`+
+    `▶ 취소: 엑셀로 전체 명단을 받아 문자 대량발송 서비스에 올리세요`
+  );
+  if(!ok){downloadStoreExcel();return null;}
+  return targets.slice(0,SMS_SAFE_LIMIT);
 }
 function adSendGuard(users){
   const {ok,blocked}=filterConsentedForAd(users);
@@ -6980,7 +7080,8 @@ function bulkSendSMS(){
   if(!consented)return;
   if(!storeOptOut()){toast('⚠️ 매장설정에서 무료수신거부 연락처를 먼저 등록해주세요 (법정 필수 표기)');return;}
   // 전체 번호를 쉼표로 묶어 문자 앱 실행 (Android는 복수 수신자 지원, iOS는 첫번째 수신자)
-  const phones=consented.map(u=>u.phone.replace(/-/g,'')).join(',');
+  const _batch=smsBatchGuard(consented); if(!_batch)return;
+  const phones=_batch.map(u=>u.phone.replace(/-/g,'')).join(',');
   const tmpl=(STORE.crmTemplate||'').replace(/\{매장명\}/g,STORE.profile.name||'매장').replace(/\{고객명\}/g,'고객님').replace(/\{쿠폰명\}/g,'').replace(/\{쿠폰번호\}/g,'').replace(/\{유효기간\}/g,'');
   window.open(`sms:${phones}?body=${encodeURIComponent(tmpl)}`,'_self');
   toast(`${users.length}명 문자 앱을 열었습니다. 전송해주세요 ✉️`);
@@ -7037,7 +7138,8 @@ function bulkRechargeDice(amount){
   renderCustomersTab(document.getElementById('admin-body'));
   if(!targets)return;
   if(!storeOptOut()){toast('⚠️ 매장설정에서 무료수신거부 연락처를 먼저 등록해주세요 (법정 필수 표기)');return;}
-  const phones=targets.map(u=>u.phone.replace(/-/g,'')).join(',');
+  const _batch=smsBatchGuard(targets); if(!_batch)return;
+  const phones=_batch.map(u=>u.phone.replace(/-/g,'')).join(',');
   const body=_crmFill(STORE.crmTemplates&&STORE.crmTemplates.dice,null,{dice:amt});
   window.open(`sms:${phones}?body=${encodeURIComponent(body)}`,'_self');
 }
@@ -7048,7 +7150,8 @@ function bulkSendPromo(){
   const targets=adSendGuard(users);
   if(!targets)return;
   if(!storeOptOut()){toast('⚠️ 매장설정에서 무료수신거부 연락처를 먼저 등록해주세요 (법정 필수 표기)');return;}
-  const phones=targets.map(u=>u.phone.replace(/-/g,'')).join(',');
+  const _batch=smsBatchGuard(targets); if(!_batch)return;
+  const phones=_batch.map(u=>u.phone.replace(/-/g,'')).join(',');
   const body=_crmFill(STORE.crmTemplates&&STORE.crmTemplates.promo,null,{});
   window.open(`sms:${phones}?body=${encodeURIComponent(body)}`,'_self');
   toast(`${targets.length}명 문자 앱을 열었습니다. 전송해주세요 ✉️`);
@@ -7682,6 +7785,19 @@ function renderAdmin(tab){
       <div class="card card-pad">
         <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:10px">📊 추가 이벤트 참여 현황</div>
         ${renderEventStats()}
+      </div>
+
+      <div class="card card-pad" style="border-color:#1D6F42">
+        <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px">📗 데이터 내려받기</div>
+        <div style="font-size:12px;color:var(--t3);margin-bottom:12px;line-height:1.65">
+          쌓인 고객·쿠폰·설문·통계를 엑셀 파일로 받아 보관하거나 문자 대량발송·ERP에 그대로 올리실 수 있어요.
+          <span style="color:var(--t4)">시트가 나눠져 있어 엑셀에서 바로 정렬·필터가 됩니다.</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm" style="width:auto;padding:11px 16px;background:#1D6F42;color:#fff;font-weight:800" onclick="downloadStoreExcel()">📗 전체 데이터 (5개 시트)</button>
+          <button class="btn-ghost" style="width:auto;padding:11px 16px;font-size:13px;font-weight:700" onclick="downloadStatsExcel()">📈 통계만</button>
+          <button class="btn-ghost" style="width:auto;padding:11px 16px;font-size:13px;font-weight:700" onclick="downloadCustomersCSV()">📊 연락처 CSV</button>
+        </div>
       </div>
     `;
     _applyStatsVipBlur();
@@ -8872,18 +8988,152 @@ function downloadCustomersCSV(){
   URL.revokeObjectURL(url);
   toast('CSV 파일을 다운로드했습니다');
 }
-function downloadCustomersTXT(){
-  if(!STORE.users.length){toast('다운로드할 고객이 없습니다');return}
-  const lines=STORE.users.map(u=>{
-    const r=getRank(u.visits||STORE.visits);
-    return `${u.name}\t${u.phone}\t${r.name}\t${u.joined||''}\t방문${u.visits||0}회\t${u.marketing?'수신동의':'수신거부'}`;
-  });
-  const header='이름\t연락처\t등급\t가입일\t방문\t마케팅수신';
-  const blob=new Blob([header+'\n'+lines.join('\n')],{type:'text/plain;charset=utf-8;'});
+/* ════════════════════ 📗 엑셀 내보내기 ════════════════════
+   외부 라이브러리(SheetJS 등)를 넣으면 단일 HTML 원칙이 깨지고 용량도 커진다.
+   대신 엑셀이 예전부터 그대로 읽는 SpreadsheetML(XML 스프레드시트 2003) 형식을 직접 만든다.
+   → 순수 텍스트라 라이브러리 0개, 시트 여러 장을 한 파일에 담을 수 있고,
+     CSV와 달리 한글·전화번호 앞자리 0이 깨지지 않는다.
+   전화번호를 숫자로 넣으면 010이 10으로 바뀌므로 전부 String 타입으로 기록한다. */
+function _xmlEsc(v){
+  return String(v==null?'':v)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/\r?\n/g,'&#10;')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g,''); // 엑셀이 거부하는 제어문자 제거
+}
+function _xlCell(v){
+  const isNum=(typeof v==='number'&&isFinite(v));
+  return `<Cell><Data ss:Type="${isNum?'Number':'String'}">${_xmlEsc(isNum?v:v)}</Data></Cell>`;
+}
+// name: 시트 이름(31자 제한, : \ / ? * [ ] 금지), rows: 2차원 배열(첫 줄 = 머리글)
+function _xlSheet(name,rows){
+  const safe=String(name).replace(/[:\\\/?*\[\]]/g,' ').slice(0,31);
+  const body=(rows||[]).map(r=>`<Row>${r.map(_xlCell).join('')}</Row>`).join('');
+  return `<Worksheet ss:Name="${_xmlEsc(safe)}"><Table>${body}</Table></Worksheet>`;
+}
+function _downloadXls(filename,sheets){
+  const xml='<?xml version="1.0" encoding="UTF-8"?>\n'+
+    '<?mso-application progid="Excel.Sheet"?>\n'+
+    '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" '+
+    'xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">'+
+    sheets.join('')+'</Workbook>';
+  const blob=new Blob(['﻿'+xml],{type:'application/vnd.ms-excel;charset=utf-8;'});
   const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;a.download=STORE.profile.name+'_고객목록_'+today()+'.txt';a.click();
-  URL.revokeObjectURL(url);
-  toast('TXT 파일을 다운로드했습니다');
+  const a=document.createElement('a');a.href=url;a.download=filename;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+/* 매장 데이터 전체를 시트 5장짜리 엑셀 한 파일로 내보낸다.
+   나중에 ERP·문자 대량발송 서비스에 그대로 올릴 수 있도록 원본 형태를 유지한다. */
+function downloadStoreExcel(){
+  if(!STORE){toast('매장 정보를 불러오지 못했습니다');return}
+  buildLastVisitIndex();
+  const users=STORE.users||[], coupons=STORE.coupons||[], surveys=STORE.surveys||[];
+  if(!users.length&&!coupons.length&&!surveys.length){toast('내보낼 데이터가 아직 없습니다');return}
+  const uname={}; users.forEach(u=>uname[u.id]=u.name);
+  const sheets=[];
+
+  // ① 고객 — 문자 발송·CRM에 바로 쓰는 핵심 시트
+  sheets.push(_xlSheet('고객',[
+    ['고객ID','이름','연락처','등급','가입일','방문수','최근활동일','미방문일수','마케팅수신동의','동의일시','보유주사위','마지막충전일','미사용쿠폰'],
+    ...users.map(u=>{
+      const lv=getLastVisit(u), diff=daysDiff(lv);
+      const st=(STORE.diceState||{})[u.id]||{};
+      const unused=coupons.filter(c=>c.uid===u.id&&c.status==='available').length;
+      return [u.id,u.name,String(u.phone||''),getRank(u.visits||0).name,u.joined||'',
+        u.visits||0,lv||'',diff===9999?'':diff,u.marketing?'동의':'미동의',u.marketingConsentAt||'',
+        st.dice||0,st.lastRecharge||'',unused];
+    })
+  ]));
+
+  // ② 쿠폰 — 발급 대비 사용률, 실제 지출을 계산하는 원장
+  sheets.push(_xlSheet('쿠폰',[
+    ['쿠폰ID','고객ID','고객명','쿠폰명','혜택','상태','발급일','사용일','처리자','유효기간','스탬프지급'],
+    ...coupons.map(c=>[c.id||'',c.uid||'',uname[c.uid]||'',c.name||'',c.benefit||'',
+      c.status==='used'?'사용':c.status==='expired'?'만료':'미사용',
+      c.created||c.issued||'',c.used_at||'',c.staff||'',c.expires||'',c.grantsStamp||''])
+  ]));
+
+  // ③ 설문 — 문항이 매장마다 달라 surveyQuestions 순서대로 열을 만든다
+  const qs=(STORE.surveyQuestions||[]);
+  const qCols=[], qKeys=[];
+  qs.forEach(q=>{
+    if(q.type==='matrix'&&Array.isArray(q.items)){
+      q.items.forEach((it,i)=>{qCols.push(q.label+' - '+it);qKeys.push([q.id,i]);});
+    }else{qCols.push(q.label||q.id);qKeys.push([q.id,null]);}
+  });
+  sheets.push(_xlSheet('설문',[
+    ['제출일','고객ID','고객명','연락처',...qCols],
+    ...surveys.map(s=>{
+      const a=s.answers||{};
+      const vals=qKeys.map(([id,idx])=>{
+        const v=a[id];
+        if(v==null)return '';
+        if(idx!==null)return Array.isArray(v)?(v[idx]==null?'':v[idx]):'';
+        return Array.isArray(v)?v.join(', '):(typeof v==='object'?JSON.stringify(v):v);
+      });
+      return [s.date||'',s.userId||'',s.name||uname[s.userId]||'',String(s.phone||''),...vals];
+    })
+  ]));
+
+  // ④ 통계 요약 — 사장님이 매달 캡처해서 보관하기 좋은 한 장
+  sheets.push(_xlSheet('통계요약',_statsRows()));
+
+  // ⑤ 처리 내역 — 부정 수급 확인용 원본 로그
+  sheets.push(_xlSheet('처리내역',[
+    ['일시','구분','내용','고객','처리자'],
+    ...(STORE.staffLogs||[]).map(l=>[l.datetime||l.date||'',l.id||l.type||'',l.name||'',l.customer||'',l.staff||''])
+  ]));
+
+  const nm=(STORE.profile&&STORE.profile.name||'매장').replace(/[\\\/:*?"<>|]/g,'');
+  _downloadXls(`${nm}_전체데이터_${today()}.xls`,sheets);
+  toast(`📗 엑셀 다운로드 — 고객 ${users.length.toLocaleString()}명 · 쿠폰 ${coupons.length.toLocaleString()}건`);
+}
+
+// 통계 요약표 (엑셀 시트 + 통계탭 단독 다운로드 공용)
+function _statsRows(){
+  const users=STORE.users||[], coupons=STORE.coupons||[], surveys=STORE.surveys||[];
+  const used=coupons.filter(c=>c.status==='used').length;
+  const avail=coupons.filter(c=>c.status==='available').length;
+  const expired=coupons.filter(c=>c.status==='expired').length;
+  const agree=users.filter(u=>u.marketing).length;
+  buildLastVisitIndex();
+  const act7=users.filter(u=>daysDiff(getLastVisit(u))<=7).length;
+  const act30=users.filter(u=>daysDiff(getLastVisit(u))<=30).length;
+  const dormant=users.filter(u=>daysDiff(getLastVisit(u))>30).length;
+  const rows=[
+    ['항목','값'],
+    ['매장명',(STORE.profile&&STORE.profile.name)||''],
+    ['기준일',today()],
+    ['',''],
+    ['총 가입 고객',users.length],
+    ['마케팅 수신동의',agree],
+    ['수신동의율(%)',users.length?Math.round(agree/users.length*100):0],
+    ['최근 7일 활동',act7],
+    ['최근 30일 활동',act30],
+    ['30일 초과 휴면',dormant],
+    ['',''],
+    ['총 방문(누적)',STORE.visits||0],
+    ['쿠폰 발급',coupons.length],
+    ['쿠폰 사용',used],
+    ['쿠폰 미사용',avail],
+    ['쿠폰 만료',expired],
+    ['쿠폰 사용률(%)',coupons.length?Math.round(used/coupons.length*100):0],
+    ['',''],
+    ['설문 응답',surveys.length],
+    ['게임 참여(누적)',(STORE.spinLog||[]).length],
+    ['',''],
+    ['VIP 등급 분포','']
+  ];
+  const tiers={};
+  users.forEach(u=>{const g=getRank(u.visits||0).name;tiers[g]=(tiers[g]||0)+1;});
+  Object.keys(tiers).forEach(k=>rows.push([k,tiers[k]]));
+  return rows;
+}
+function downloadStatsExcel(){
+  if(!STORE){toast('매장 정보를 불러오지 못했습니다');return}
+  const nm=(STORE.profile&&STORE.profile.name||'매장').replace(/[\\\/:*?"<>|]/g,'');
+  _downloadXls(`${nm}_통계_${today()}.xls`,[_xlSheet('통계요약',_statsRows())]);
+  toast('📗 통계를 엑셀로 다운로드했습니다');
 }
 
 /* ════════════════════ 전화번호 자동 포맷 ════════════════════ */
