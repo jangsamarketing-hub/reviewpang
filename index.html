@@ -1447,17 +1447,27 @@ body.dark .dice-side-jp .dsj-item{background:linear-gradient(160deg,#4A3A18,#3A2
 <!-- ══════════ 매장 생성 완료 ══════════ -->
 <div class="scr" id="s-owner-done">
   <div class="scroll" style="background:var(--white);padding:60px 24px;text-align:center;align-items:center;display:flex;flex-direction:column;min-height:100vh">
-    <div style="font-size:64px;margin-bottom:20px">🎉</div>
-    <div style="font-size:22px;font-weight:900;color:var(--t1);margin-bottom:10px">매장이 생성됐어요!</div>
-    <div style="font-size:14px;color:var(--t3);margin-bottom:28px;line-height:1.6">아래 주소로 접속하면 이 매장 전용 페이지가 열려요</div>
-    <div class="card card-pad" style="width:100%;text-align:left">
-      <div style="font-size:12px;color:var(--t3);font-weight:700;margin-bottom:6px">매장 고유 ID</div>
-      <div id="os-result-id" style="font-size:20px;font-weight:900;color:var(--blue);font-family:monospace;margin-bottom:16px"></div>
-      <div style="font-size:12px;color:var(--t3);font-weight:700;margin-bottom:6px">우리 매장 전용 주소 (고객·QR코드용)</div>
-      <div id="os-result-link" style="font-size:13px;color:var(--t2);word-break:break-all;background:var(--bg);padding:10px 12px;border-radius:10px"></div>
-      <div style="font-size:11px;color:var(--t4);margin-top:10px;line-height:1.6">이 주소 하나로 고객·QR코드 등 모든 용도를 사용하세요</div>
+    <div style="font-size:64px;margin-bottom:20px">📮</div>
+    <div style="font-size:22px;font-weight:900;color:var(--t1);margin-bottom:10px">신청이 접수됐어요!</div>
+    <div style="font-size:14px;color:var(--t3);margin-bottom:24px;line-height:1.7">
+      담당자가 <b style="color:var(--t1)">직접 전화드려 확인 후</b> 매장을 열어드립니다.<br>
+      <span style="font-size:12.5px;color:var(--t4)">아무나 쓰는 서비스가 아니라, 함께 실행하실 대표님께만 열어드려요.</span>
     </div>
-    <button class="btn btn-blue" style="margin-top:24px" onclick="goToMyStore()">내 매장 관리자 페이지로 이동</button>
+    <div class="card card-pad" style="width:100%;text-align:left;border-color:#FF8B42;background:linear-gradient(160deg,#FFF8F3,#FFEEE2)">
+      <div style="font-size:13.5px;font-weight:900;color:#B5551A;margin-bottom:8px">📞 확인 전화를 기다려주세요</div>
+      <div style="font-size:12.5px;color:#8A4715;line-height:1.8">
+        가입하신 연락처로 연락드립니다.<br>
+        빠르게 열어드려야 하는 상황이면 아래로 먼저 문의해주세요.
+      </div>
+      <a href="https://open.kakao.com/me/jangsa_master" target="_blank" rel="noopener" class="btn" style="margin-top:12px;background:#FEE500;color:#191f28;font-weight:800;text-decoration:none;display:flex;align-items:center;justify-content:center">💬 카카오톡으로 문의하기</a>
+    </div>
+    <div class="card card-pad" style="width:100%;text-align:left;margin-top:12px">
+      <div style="font-size:12px;color:var(--t3);font-weight:700;margin-bottom:6px">매장 고유 ID <span style="font-weight:500;color:var(--t4)">(문의 시 알려주세요)</span></div>
+      <div id="os-result-id" style="font-size:20px;font-weight:900;color:var(--blue);font-family:monospace;margin-bottom:16px"></div>
+      <div style="font-size:12px;color:var(--t3);font-weight:700;margin-bottom:6px">우리 매장 전용 주소 (승인 후 사용)</div>
+      <div id="os-result-link" style="font-size:13px;color:var(--t2);word-break:break-all;background:var(--bg);padding:10px 12px;border-radius:10px"></div>
+    </div>
+    <button class="btn btn-blue" style="margin-top:20px" onclick="goToMyStore()">내 매장 페이지 보기</button>
   </div>
 </div>
 
@@ -1897,9 +1907,10 @@ body.dark .dice-side-jp .dsj-item{background:linear-gradient(160deg,#4A3A18,#3A2
       <div style="font-size:18px;font-weight:900;color:var(--t1);line-height:1.4">매장 평가 후 포인트 적립!</div>
       <div style="font-size:12px;color:var(--t3);margin-top:4px">(약 10초면 완료됩니다)</div>
     </div>
+    <div id="survey-track-pick" style="padding:0 20px 4px"></div>
     <div style="padding:0 20px" id="survey-questions"></div>
     <div id="survey-submit-error" style="padding:0 20px 4px"></div>
-    <div style="padding:0 20px 24px"><button class="btn btn-blue" onclick="submitSurvey()">제출하기 ✓</button></div>
+    <div style="padding:0 20px 24px" id="survey-submit-wrap"><button class="btn btn-blue" onclick="submitSurvey()">제출하기 ✓</button></div>
   </div>
   <div class="bottom-banner"><button class="btn-channel" onclick="goKakaoChannel()">💬 카카오 채널 구독하고 혜택받기</button></div>
 </div>
@@ -2574,6 +2585,49 @@ if(!storesDB['1000000001']){
 }
 saveStoresDB();
 
+/* ════════════════ 📝 설문 투트랙 기본값 ════════════════
+   같은 설문을 모두에게 돌리면 "맛있었어요" 말고는 안 남는다.
+   사장님이 진짜 알아야 하는 건 두 가지이고, 물어볼 대상이 서로 다르다.
+     신규  → 어떻게 알고 왔나(유입 경로) · 무엇을 기대하고 왔나(목적)
+     재방문 → 왜 다시 왔나(재방문 이유) · 무엇이 아쉬웠나(이탈 요인)
+   버전(v)을 올리면 migrateStore가 기본 문항을 통째로 교체한다. */
+const SURVEY_TRACK_V=1;
+function _defaultSurveyTracks(){
+  const motive=['가족 모임','친구와 함께','연인과 데이트','직장동료와 식사','회식·단체모임','혼밥','기념일·특별한 날','접대·미팅'];
+  const travel=['도보 5분 이내','도보 10분 거리','차량 5분 거리','차량 10분 거리','차량 20분 이상'];
+  return {
+    v:SURVEY_TRACK_V,
+    // ── 신규 고객: 어떻게 알고 왔고, 뭘 먹으러 왔는가 ──
+    new:[
+      {id:'n_found',type:'multicheck',label:'저희 매장을 어떻게 알고 오셨어요?',
+       options:['네이버 검색·지도','인스타그램','유튜브·블로그 후기','배달앱에서 보고','지나가다 간판 보고','지인 추천','당근·지역카페','기타']},
+      {id:'n_motive',type:'multicheck',label:'오늘 어떤 자리로 오셨나요?',options:motive},
+      {id:'n_want',type:'multicheck',label:'무엇을 드시러 오셨어요?',
+       options:['대표 메뉴가 궁금해서','사진 보고 끌려서','가성비가 좋아 보여서','근처에 마땅한 곳이 없어서','추천받은 메뉴가 있어서','그냥 배고파서']},
+      {id:'n_expect',type:'text',label:'오시기 전에 가장 걱정되셨던 점이 있다면? (없으면 "없음")'},
+      {id:'n_rate',type:'matrix',label:'오늘 처음 오신 소감을 남겨주세요 (10점 만점)',
+       items:['첫인상·분위기','가격대비 맛','가격대비 양','직원 친절도','매장 청결도']},
+      {id:'n_travel',type:'multicheck',label:'매장까지 오시는데 얼마나 걸리셨나요?',options:travel},
+      {id:'n_again',type:'multicheck',label:'다음에 또 오실 것 같으세요?',
+       options:['꼭 다시 온다','아마 올 것 같다','잘 모르겠다','아쉬워서 고민된다']},
+      {id:'n_free',type:'text',label:'아쉬웠던 점을 솔직히 적어주세요 (꼭 개선하겠습니다)'}
+    ],
+    // ── 재방문 고객: 왜 다시 왔고, 무엇이 아쉬웠는가 ──
+    revisit:[
+      {id:'r_why',type:'multicheck',label:'다시 찾아주신 이유가 무엇인가요?',
+       options:['맛이 좋아서','양이 넉넉해서','가격이 합리적이라','사장님·직원이 친절해서','매장이 깨끗해서','분위기가 좋아서','가까워서','주차가 편해서','쿠폰·혜택 때문에']},
+      {id:'r_best',type:'text',label:'가장 좋았던 메뉴나 순간은 무엇이었나요?'},
+      {id:'r_motive',type:'multicheck',label:'오늘은 어떤 자리로 오셨나요?',options:motive},
+      {id:'r_rate',type:'matrix',label:'지난번과 비교해 어떠셨나요? (10점 만점)',
+       items:['가격대비 맛','가격대비 양','조리 시간','직원 친절도','매장 청결도']},
+      {id:'r_miss',type:'multicheck',label:'아쉬웠던 점이 있다면 골라주세요',
+       options:['특별히 없음','대기 시간이 길다','맛이 예전만 못하다','양이 줄어든 것 같다','가격이 부담된다','응대가 아쉬웠다','매장이 시끄럽다','주차가 불편하다']},
+      {id:'r_recommend',type:'multicheck',label:'주변에 추천하실 의향이 있으세요?',
+       options:['이미 추천했다','추천할 생각이다','보통이다','아직은 아니다']},
+      {id:'r_free',type:'text',label:'사장님께 하고 싶은 말씀을 남겨주세요'}
+    ]
+  };
+}
 function migrateStore(s){
   if(!s.createdAt)s.createdAt=s._sbTs||Date.now(); // 기존 매장은 최초 동기화 시점을 가입일로 간주
   if(s.approved===undefined)s.approved=true;
@@ -2646,6 +2700,12 @@ function migrateStore(s){
     const matrixQ=s.surveyQuestions.find(q=>q.type==='matrix');
     if(matrixQ){s.surveyQuestions=[matrixQ,...s.surveyQuestions.filter(q=>q.type!=='matrix')];}
   }
+  /* ── 설문 투트랙 ──
+     신규 고객과 재방문 고객에게 같은 걸 물으면 둘 다 못 건진다.
+     신규에겐 "어떻게 알고 왔는지 · 뭘 기대하고 왔는지"(유입 경로와 기대),
+     재방문에겐 "왜 다시 왔는지 · 뭐가 아쉬웠는지"(재방문 이유와 이탈 요인)를 물어야
+     '고객이 왜 우리 매장에 오는가'가 데이터로 남는다. */
+  if(!s.surveyTracks||s.surveyTracks.v!==SURVEY_TRACK_V)s.surveyTracks=_defaultSurveyTracks();
   // 구버전 상품 확률 (4개 이하) 이면 5개 기본값으로 교체
   // v2: 주류 제거, 4등=음료수 · 5등=스탬프 1개 적립(grantsStamp) — 서버 용량과 무관하게 실물 재고 없는 상품 위주로 재편
   // v3: 1등을 '🏆 잭팟'으로 교체 — 당첨 시 같은 게임을 한 번 더 돌려 세부 상품을 정한다.
@@ -3621,7 +3681,12 @@ function createStore(){
   const ownerMarketing=!!(document.getElementById('os-marketing')&&document.getElementById('os-marketing').checked);
   newStore.owner={name:owner,phone,marketing:ownerMarketing,marketingConsentAt:ownerMarketing?nowStr():null};
   newStore.naverPlaceUrl=naverUrl;
-  newStore.approved=true; // MVP: 자동 승인 (총괄 관리자가 나중에 정지 가능)
+  /* ⚠️ 자동 승인하지 않는다.
+     이 앱은 아무나 가입해서 쓰는 서비스가 아니라, 컨설팅·마케팅 챌린지에 참여하신
+     대표님께만 열어드리는 도구다. 신청만 받아두고 실제 개방은 총괄관리자가
+     전화로 확인한 뒤 '승인하기'를 눌러야 이뤄진다. */
+  newStore.approved=false;
+  newStore.appliedAt=nowStr();
   newStore.premium=false;newStore.plan='free';
   newStore.resetPin='0123';
   newStore.staff=[{code:'STAFF001',pin:'1234',name:'직원',active:true}];
@@ -3736,7 +3801,11 @@ function show(id){
   if(id==='s-dice')renderDiceBoard();
   if(id==='s-coupons'){document.querySelectorAll('[id^="ctab"]').forEach(b=>b.className='chip off');document.getElementById('ctab-available').className='chip on';renderCoupons('available')}
   if(id==='s-stamp')renderStamps();
-  if(id==='s-survey')renderSurveyQuestions();
+  if(id==='s-survey'){
+    _surveyTrack=guessSurveyTrack();   // 추정값을 미리 선택해 두되, 손님이 바꿀 수 있게 둔다
+    renderSurveyTrackPick();
+    renderSurveyQuestions();
+  }
   if(id==='s-myinfo')renderMyInfo();
   if(id==='s-admin'){
     renderAdmin('stats'); // 로컬 데이터로 즉시 렌더 (빠른 UX)
@@ -5778,10 +5847,79 @@ function addStamp(){
 }
 
 /* ════════════════════ 설문 (동적, 사장님이 문항 등록) ════════════════════ */
+/* ── 신규/재방문 판정 ──
+   ① 전화번호로 이미 등록된 고객이고 방문·설문 이력이 있으면 '재방문'으로 추정하고
+   ② 그 추정을 그대로 쓰지 않고 손님이 버튼으로 확정하게 한다.
+   추정만 믿으면 가족이 번호를 공유하거나 대표번호로 가입한 경우 통계가 통째로 틀어진다. */
+let _surveyTrack=null;
+function guessSurveyTrack(){
+  if(!currentUser)return 'new';
+  const hasSurvey=(STORE.surveys||[]).some(s=>s.uid===currentUser.id);
+  const visits=+(currentUser.visits||0);
+  return (hasSurvey||visits>0)?'revisit':'new';
+}
+function _activeSurveyQs(){
+  const t=STORE.surveyTracks||_defaultSurveyTracks();
+  return (t[_surveyTrack]||t.new||[]);
+}
+/* 통계·응답목록·차트는 두 트랙을 한 화면에서 봐야 한다.
+   신규(n_*)와 재방문(r_*)은 문항 id가 겹치지 않으므로 그냥 이어붙이면
+   각 응답은 자기 트랙 문항에만 값이 있고 나머지는 비어서 자동으로 걸러진다.
+   예전 단일 설문(surveyQuestions)으로 받은 응답도 계속 보이도록 뒤에 붙인다. */
+function _allSurveyQs(){
+  const t=STORE.surveyTracks||_defaultSurveyTracks();
+  const seen={},out=[];
+  [...(t.new||[]),...(t.revisit||[]),...(STORE.surveyQuestions||[])].forEach(q=>{
+    if(q&&q.id&&!seen[q.id]){seen[q.id]=1;out.push(q);}
+  });
+  return out;
+}
+// 관리자 설문 편집기에서 지금 편집 중인 트랙
+let _admSurveyTrack='new';
+function _admQs(){
+  if(!STORE.surveyTracks)STORE.surveyTracks=_defaultSurveyTracks();
+  const t=STORE.surveyTracks;
+  if(!Array.isArray(t[_admSurveyTrack]))t[_admSurveyTrack]=[];
+  return t[_admSurveyTrack];
+}
+function selSurveyTrackAdm(t){
+  _admSurveyTrack=t;
+  renderSurveyAdmin(document.getElementById('admin-body'));
+}
+function pickSurveyTrack(track){
+  _surveyTrack=track;
+  renderSurveyTrackPick();
+  renderSurveyQuestions();
+  const w=document.getElementById('survey-questions');
+  if(w)w.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function renderSurveyTrackPick(){
+  const el=document.getElementById('survey-track-pick');
+  if(!el)return;
+  const btn=(t,emoji,title,sub)=>{
+    const on=_surveyTrack===t;
+    return `<button onclick="pickSurveyTrack('${t}')" style="flex:1;padding:14px 10px;border-radius:14px;cursor:pointer;font-family:inherit;text-align:center;
+      border:2.5px solid ${on?'var(--blue)':'var(--border)'};background:${on?'var(--blue-light)':'var(--white)'};transition:.15s">
+      <div style="font-size:24px;line-height:1">${emoji}</div>
+      <div style="font-size:14.5px;font-weight:900;color:${on?'var(--blue)':'var(--t1)'};margin-top:5px">${title}</div>
+      <div style="font-size:11px;color:${on?'var(--blue)':'var(--t4)'};margin-top:2px">${sub}</div>
+    </button>`;
+  };
+  el.innerHTML=`
+    <div style="font-size:14px;font-weight:800;color:var(--t1);margin-bottom:9px">오늘 저희 매장 처음이신가요?</div>
+    <div style="display:flex;gap:9px;margin-bottom:${_surveyTrack?'18px':'6px'}">
+      ${btn('new','🙋','처음 왔어요','오늘이 첫 방문')}
+      ${btn('revisit','💚','또 왔어요','예전에 와봤어요')}
+    </div>
+    ${_surveyTrack?'':'<div style="font-size:12px;color:var(--t4);text-align:center;padding:10px 0 4px">위에서 하나를 골라주세요</div>'}`;
+}
 function renderSurveyQuestions(){
   curSurveyAnswers={};
   const wrap=document.getElementById('survey-questions');
-  wrap.innerHTML=STORE.surveyQuestions.map(q=>{
+  const sub=document.getElementById('survey-submit-wrap');
+  if(sub)sub.style.display=_surveyTrack?'block':'none';
+  if(!_surveyTrack){wrap.innerHTML='';return;}
+  wrap.innerHTML=_activeSurveyQs().map(q=>{
     if(q.type==='rating'){
       curSurveyAnswers[q.id]=3;
       return `<div style="margin-bottom:24px"><div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:10px">${q.label}</div>
@@ -5909,8 +6047,11 @@ function setSurveyChoice(qid,val,el){
 }
 function submitSurvey(){
   const cfg=STORE.stampSettings||{grantStamp:'survey'};
-  // 텍스트 필드 필수 체크 (스탬프 적립 조건)
-  const textQ=STORE.surveyQuestions.find(q=>q.type==='text');
+  if(!_surveyTrack){toast('처음 오셨는지 먼저 선택해주세요');return;}
+  // 텍스트 필드 필수 체크 (스탬프 적립 조건) — 마지막 주관식 하나만 필수로 본다
+  const _qs=_activeSurveyQs();
+  const _texts=_qs.filter(q=>q.type==='text');
+  const textQ=_texts.length?_texts[_texts.length-1]:null;
   if(textQ&&cfg.grantStamp==='survey'&&(!curSurveyAnswers[textQ.id]||!String(curSurveyAnswers[textQ.id]).trim())){
     const errEl=document.getElementById('survey-submit-error');
     if(errEl)errEl.innerHTML='<div class="error-msg" style="margin-bottom:0">아쉬운 부분을 입력해야 스탬프가 적립됩니다 ✍️</div>';
@@ -5920,9 +6061,9 @@ function submitSurvey(){
   const card=getMyStampCard();
   const surveyKey='survey_'+today()+'_'+(currentUser?.id||'guest');
   const alreadySurveyed=card.history&&card.history.some(h=>h.reason===surveyKey);
-  STORE.surveys.push({name:currentUser?.name||'고객',phone:currentUser?.phone||'',uid:currentUser?.id||'guest',answers:{...curSurveyAnswers},date:today(),datetime:nowStr()});
+  STORE.surveys.push({name:currentUser?.name||'고객',phone:currentUser?.phone||'',uid:currentUser?.id||'guest',track:_surveyTrack,answers:{...curSurveyAnswers},date:today(),datetime:nowStr()});
   saveState();
-  logEvent('survey_done',{fromMission:_diceMissionActive==='survey'});
+  logEvent('survey_done',{fromMission:_diceMissionActive==='survey',track:_surveyTrack});
   const _fromDiceMission=_diceMissionActive==='survey';
   if(_fromDiceMission){_diceMissionActive=null;_diceMarkMissionDone('survey');_diceMissionJustGranted=true;}
   if(cfg.grantStamp==='survey'&&!alreadySurveyed){
@@ -7443,7 +7584,7 @@ function renderParticipationChart(){
 function renderStatsSurveySummary(){
   const surveys=STORE.surveys||[];
   if(!surveys.length)return '<div style="font-size:13px;color:var(--t4);padding:8px 0">아직 설문 응답이 없습니다</div>';
-  const qs=STORE.surveyQuestions||[];
+  const qs=_allSurveyQs();
   let html='';
   qs.forEach(q=>{
     if(q.type==='multicheck'){
@@ -7640,6 +7781,25 @@ function renderTrialBanner(){
 function renderAdmin(tab){
   document.getElementById('admin-store-title').textContent=STORE.profile.name+' 관리';
   const el=document.getElementById('admin-body');
+  /* 승인 전에는 관리자 기능을 열지 않는다.
+     신청은 누구나 할 수 있지만 실제 사용은 전화 확인 후 총괄관리자가 열어준다. */
+  if(!STORE.approved){
+    el.innerHTML=`
+      <div class="card card-pad" style="margin:0 16px;text-align:center;border-color:#FF8B42">
+        <div style="font-size:46px;margin-bottom:10px">📮</div>
+        <div style="font-size:18px;font-weight:900;color:var(--t1);margin-bottom:8px">승인 대기 중입니다</div>
+        <div style="font-size:13px;color:var(--t3);line-height:1.8;margin-bottom:16px">
+          담당자가 <b style="color:var(--t1)">직접 전화드려 확인한 뒤</b> 매장을 열어드려요.<br>
+          <span style="font-size:12px;color:var(--t4)">신청일 ${(STORE.appliedAt||'').slice(0,16)||'-'}</span>
+        </div>
+        <div style="background:var(--bg);border-radius:12px;padding:12px 14px;text-align:left;font-size:12px;color:var(--t3);line-height:1.8;margin-bottom:14px">
+          <b style="color:var(--t1)">매장 ID</b> ${STORE_ID}<br>
+          <b style="color:var(--t1)">신청자</b> ${(STORE.owner&&STORE.owner.name)||'-'} · ${(STORE.owner&&STORE.owner.phone)||'-'}
+        </div>
+        <a href="https://open.kakao.com/me/jangsa_master" target="_blank" rel="noopener" class="btn" style="background:#FEE500;color:#191f28;font-weight:800;text-decoration:none;display:flex;align-items:center;justify-content:center">💬 카카오톡으로 문의하기</a>
+      </div>`;
+    return;
+  }
   if(tab==='stats'){
     const total=STORE.coupons.length,used=STORE.coupons.filter(c=>c.status==='used').length,rate=total?Math.round(used/total*100):0;
     el.innerHTML=`
@@ -8216,7 +8376,18 @@ function renderSurveyAdmin(el){
       </div>
       <div id="sq-mgmt-body" style="display:none;margin-top:14px">
         ${isPremium()?`
-        <div style="font-size:12px;color:var(--t3);margin-bottom:12px">문항 내용을 직접 수정하고, ↑↓ 버튼으로 순서를 바꿀 수 있어요</div>
+        <div style="font-size:12px;color:var(--t3);margin-bottom:10px">신규 손님과 재방문 손님에게 <b>서로 다른 설문</b>이 나갑니다. 아래에서 편집할 쪽을 고르세요.</div>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          ${[['new','🙋 신규 고객','어떻게 알고 왔나'],['revisit','💚 재방문 고객','왜 다시 왔나']].map(([t,label,desc])=>{
+            const on=_admSurveyTrack===t;
+            return `<button onclick="selSurveyTrackAdm('${t}')" style="flex:1;padding:11px 8px;border-radius:11px;cursor:pointer;font-family:inherit;text-align:center;
+              border:2px solid ${on?'var(--blue)':'var(--border)'};background:${on?'var(--blue-light)':'var(--white)'}">
+              <div style="font-size:13px;font-weight:800;color:${on?'var(--blue)':'var(--t1)'}">${label}</div>
+              <div style="font-size:10.5px;color:${on?'var(--blue)':'var(--t4)'};margin-top:2px">${desc}</div>
+            </button>`;
+          }).join('')}
+        </div>
+        <div style="font-size:12px;color:var(--t3);margin-bottom:12px">문항 내용을 직접 수정하고, ↑↓ 버튼으로 순서를 바꿀 수 있어요 <span style="color:var(--t4)">(현재 <b>${_admSurveyTrack==='new'?'신규':'재방문'}</b> 설문 편집 중)</span></div>
         <div id="sq-list">${renderSurveyQuestionRows(qTypeName)}</div>
         <hr style="border:none;border-top:1px solid var(--border2);margin:14px 0">
         <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:10px">새 문항 추가</div>
@@ -8233,7 +8404,7 @@ function renderSurveyAdmin(el){
         <button class="btn btn-light" style="margin-top:10px" onclick="addQuestion()">+ 문항 추가</button>
         `:`
         <div style="font-size:12px;color:var(--t3);margin-bottom:10px">현재 설문 문항 목록</div>
-        ${(STORE.surveyQuestions||[]).map((q,i)=>`
+        ${_admQs().map((q,i)=>`
           <div style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;background:var(--bg);display:flex;align-items:center;gap:8px">
             <span class="qtype-tag">${qTypeName[q.type]||q.type}</span>
             <span style="font-size:13px;color:var(--t1);flex:1">${q.label||'문항'}</span>
@@ -8284,7 +8455,7 @@ function renderSurveyAdmin(el){
               <span style="font-size:11px;color:var(--t4);font-weight:400;margin-left:6px">${s.datetime||s.date}</span>
               ${s.phone?`<span style="font-size:11px;color:var(--t3);margin-left:4px">${s.phone}</span>`:''}
             </div>
-            ${STORE.surveyQuestions.map(q=>{
+            ${_allSurveyQs().map(q=>{
               const a=s.answers[q.id];
               if(a===undefined||a===null||a==='')return'';
               let disp='';
@@ -8317,7 +8488,7 @@ function renderSurveyCharts(){
   const n=surveys.length;
   if(!n)return'<div class="card" style="padding:24px 20px;text-align:center;color:var(--t4);font-size:13px">해당 기간에 응답이 없습니다</div>';
   const BAR_COLORS=['#3182f6','#00c471','#f5b925','#f04452','#8b5cf6','#ec4899','#14b8a6','#f97316'];
-  return STORE.surveyQuestions.map(q=>{
+  return _allSurveyQs().map(q=>{
     if(q.type==='matrix'){
       const items=q.items||[];
       const rows=items.map((item,i)=>{
@@ -8373,17 +8544,17 @@ function renderSurveyCharts(){
   }).join('');
 }
 function renderSurveyQuestionRows(qTypeName){
-  if(!STORE.surveyQuestions.length)return '<div style="font-size:13px;color:var(--t4)">등록된 문항이 없습니다</div>';
-  return STORE.surveyQuestions.map((q,i)=>`
+  if(!_admQs().length)return '<div style="font-size:13px;color:var(--t4)">등록된 문항이 없습니다</div>';
+  return _admQs().map((q,i)=>`
     <div style="padding:12px 0;border-bottom:1px solid var(--border2)">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <span class="qtype-tag">${qTypeName[q.type]}</span>
         <div style="flex:1"></div>
         <button onclick="moveQuestion(${i},-1)" ${i===0?'disabled':''} style="width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--white);color:var(--t2);cursor:pointer;font-size:13px;${i===0?'opacity:.35':''}">↑</button>
-        <button onclick="moveQuestion(${i},1)" ${i===STORE.surveyQuestions.length-1?'disabled':''} style="width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--white);color:var(--t2);cursor:pointer;font-size:13px;${i===STORE.surveyQuestions.length-1?'opacity:.35':''}">↓</button>
+        <button onclick="moveQuestion(${i},1)" ${i===_admQs().length-1?'disabled':''} style="width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--white);color:var(--t2);cursor:pointer;font-size:13px;${i===_admQs().length-1?'opacity:.35':''}">↓</button>
         <button onclick="deleteQuestion(${i})" style="width:30px;height:30px;border-radius:8px;border:1px solid transparent;background:var(--red-light);color:var(--red);cursor:pointer;font-size:15px">×</button>
       </div>
-      <input value="${(q.label||'').replace(/"/g,'&quot;')}" onchange="STORE.surveyQuestions[${i}].label=this.value;saveState()" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;outline:none;background:var(--white);color:var(--t1);font-family:'Noto Sans KR',sans-serif">
+      <input value="${(q.label||'').replace(/"/g,'&quot;')}" onchange="_admQs()[${i}].label=this.value;saveState()" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;outline:none;background:var(--white);color:var(--t1);font-family:'Noto Sans KR',sans-serif">
       ${(q.type==='choice'||q.type==='multicheck')?`<input value="${(q.options||[]).join(', ').replace(/"/g,'&quot;')}" placeholder="선택지 (쉼표로 구분)" onchange="updateQuestionOptions(${i},this.value)" style="width:100%;margin-top:6px;padding:9px 11px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;outline:none;background:var(--white);color:var(--t2);font-family:'Noto Sans KR',sans-serif">`:''}
       ${q.type==='matrix'?`<input value="${(q.items||[]).join(', ').replace(/"/g,'&quot;')}" placeholder="평가 항목 (쉼표로 구분)" onchange="updateQuestionItems(${i},this.value)" style="width:100%;margin-top:6px;padding:9px 11px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;outline:none;background:var(--white);color:var(--t2);font-family:'Noto Sans KR',sans-serif">`:''}
     </div>
@@ -8391,8 +8562,8 @@ function renderSurveyQuestionRows(qTypeName){
 }
 function moveQuestion(i,dir){
   const j=i+dir;
-  if(j<0||j>=STORE.surveyQuestions.length)return;
-  const arr=STORE.surveyQuestions;
+  if(j<0||j>=_admQs().length)return;
+  const arr=_admQs();
   [arr[i],arr[j]]=[arr[j],arr[i]];
   saveState();
   renderSurveyAdmin(document.getElementById('admin-body'));
@@ -8400,13 +8571,13 @@ function moveQuestion(i,dir){
 function updateQuestionOptions(i,val){
   const opts=val.split(',').map(s=>s.trim()).filter(Boolean);
   if(opts.length<2){toast('선택지는 2개 이상이어야 해요');renderSurveyAdmin(document.getElementById('admin-body'));return}
-  STORE.surveyQuestions[i].options=opts;
+  _admQs()[i].options=opts;
   saveState();
 }
 function updateQuestionItems(i,val){
   const items=val.split(',').map(s=>s.trim()).filter(Boolean);
   if(items.length<2){toast('평가 항목은 2개 이상이어야 해요');renderSurveyAdmin(document.getElementById('admin-body'));return}
-  STORE.surveyQuestions[i].items=items;
+  _admQs()[i].items=items;
   saveState();
 }
 function toggleNqFields(type){
@@ -8428,13 +8599,13 @@ function addQuestion(){
     if(items.length<2){toast('평가 항목을 2개 이상 입력해주세요');return}
     q.items=items;
   }
-  STORE.surveyQuestions.push(q);
+  _admQs().push(q);
   saveState();
   renderSurveyAdmin(document.getElementById('admin-body'));
   toast('문항이 추가되었습니다');
 }
 function deleteQuestion(idx){
-  STORE.surveyQuestions.splice(idx,1);
+  _admQs().splice(idx,1);
   saveState();
   renderSurveyAdmin(document.getElementById('admin-body'));
 }
@@ -8989,27 +9160,38 @@ function downloadStoreExcel(){
       c.created||c.issued||'',c.used_at||'',c.staff||'',c.expires||'',c.grantsStamp||''])
   ]));
 
-  // ③ 설문 — 문항이 매장마다 달라 surveyQuestions 순서대로 열을 만든다
-  const qs=(STORE.surveyQuestions||[]);
-  const qCols=[], qKeys=[];
-  qs.forEach(q=>{
-    if(q.type==='matrix'&&Array.isArray(q.items)){
-      q.items.forEach((it,i)=>{qCols.push(q.label+' - '+it);qKeys.push([q.id,i]);});
-    }else{qCols.push(q.label||q.id);qKeys.push([q.id,null]);}
-  });
-  sheets.push(_xlSheet('설문',[
-    ['제출일','고객ID','고객명','연락처',...qCols],
-    ...surveys.map(s=>{
-      const a=s.answers||{};
-      const vals=qKeys.map(([id,idx])=>{
-        const v=a[id];
-        if(v==null)return '';
-        if(idx!==null)return Array.isArray(v)?(v[idx]==null?'':v[idx]):'';
-        return Array.isArray(v)?v.join(', '):(typeof v==='object'?JSON.stringify(v):v);
-      });
-      return [s.date||'',s.userId||'',s.name||uname[s.userId]||'',String(s.phone||''),...vals];
-    })
-  ]));
+  /* ③ 설문 — 신규/재방문 트랙별로 시트를 나눈다.
+     한 시트에 섞으면 빈 칸이 절반인 표가 되어 엑셀에서 집계가 안 된다.
+     ⚠️ matrix 답변은 배열이 아니라 '항목명'을 키로 갖는 객체다({가격대비 맛:8,...}). */
+  const _mkSurveySheet=(name,qs,rows)=>{
+    const cols=[],keys=[];
+    qs.forEach(q=>{
+      if(q.type==='matrix'&&Array.isArray(q.items)){
+        q.items.forEach(it=>{cols.push((q.label||q.id)+' - '+it);keys.push([q.id,it]);});
+      }else{cols.push(q.label||q.id);keys.push([q.id,null]);}
+    });
+    return _xlSheet(name,[
+      ['제출일시','고객ID','고객명','연락처','구분',...cols],
+      ...rows.map(s=>{
+        const a=s.answers||{};
+        const uid=s.uid||s.userId||'';
+        const vals=keys.map(([id,item])=>{
+          const v=a[id];
+          if(v==null||v==='')return '';
+          if(item!==null)return (v&&typeof v==='object'&&v[item]!=null)?v[item]:'';
+          if(Array.isArray(v))return v.join(', ');
+          return (typeof v==='object')?JSON.stringify(v):v;
+        });
+        return [s.datetime||s.date||'',uid,s.name||uname[uid]||'',String(s.phone||''),
+                s.track==='new'?'신규':s.track==='revisit'?'재방문':'구버전',...vals];
+      })
+    ]);
+  };
+  const _tr=STORE.surveyTracks||_defaultSurveyTracks();
+  sheets.push(_mkSurveySheet('설문_신규',_tr.new||[],surveys.filter(s=>s.track==='new')));
+  sheets.push(_mkSurveySheet('설문_재방문',_tr.revisit||[],surveys.filter(s=>s.track==='revisit')));
+  const _legacy=surveys.filter(s=>!s.track);
+  if(_legacy.length)sheets.push(_mkSurveySheet('설문_구버전',STORE.surveyQuestions||[],_legacy));
 
   // ④ 통계 요약 — 사장님이 매달 캡처해서 보관하기 좋은 한 장
   sheets.push(_xlSheet('통계요약',_statsRows()));
