@@ -2595,10 +2595,13 @@ saveStoresDB();
      ③ 어떤 자리로 왔나     = 메뉴·좌석·시간대 설계
      ④ 점수 3개 + 한 줄     = 무엇을 고칠지
    더 묻고 싶은 건 사장님이 관리자에서 직접 추가할 수 있다. */
-const SURVEY_TRACK_V=2;
+const SURVEY_TRACK_V=3;
 function _defaultSurveyTracks(){
   const motive=['가족 모임','친구와 함께','연인과 데이트','직장동료·회식','혼밥','기념일·특별한 날'];
-  const rate=['가격대비 맛','직원 응대','매장 청결'];
+  const travel=['도보 5분 이내','도보 10분 거리','차량 5분 거리','차량 10~20분','차량 20분 이상'];
+  // 양은 재방문을 크게 좌우하는 항목이라 맛과 함께 반드시 본다
+  const rate=['가격대비 맛','가격대비 양','직원 응대','매장 청결'];
+  const NEED='(5자 이상 부탁드립니다)';
   return {
     v:SURVEY_TRACK_V,
     // ── 신규: 어떻게 알았고, 왜 우리를 골랐나 ──
@@ -2608,16 +2611,18 @@ function _defaultSurveyTracks(){
       {id:'n_why',type:'multicheck',label:'다른 곳도 많은데, 왜 저희를 골라주셨어요?',
        options:['사진이 맛있어 보여서','리뷰가 좋아서','메뉴가 끌려서','가격이 괜찮아서','가까워서','주차가 편해서','추천받아서']},
       {id:'n_motive',type:'multicheck',label:'오늘 어떤 자리로 오셨나요?',options:motive},
+      {id:'n_travel',type:'multicheck',label:'매장까지 오시는 데 얼마나 걸리셨어요?',options:travel},
       {id:'n_rate',type:'matrix',label:'오늘 어떠셨어요? (10점 만점)',items:rate},
-      {id:'n_free',type:'text',label:'딱 하나만 바뀌면 좋겠다 싶은 게 있다면?'}
+      {id:'n_free',type:'text',label:'딱 하나만 바뀌면 좋겠다 싶은 게 있다면?',placeholder:NEED}
     ],
     // ── 재방문: 왜 다시 왔나 (= 재방문 USP) ──
     revisit:[
       {id:'r_why',type:'multicheck',label:'다시 찾아주신 이유가 무엇인가요?',
        options:['맛이 좋아서','양이 넉넉해서','가격이 합리적이라','사장님·직원이 친절해서','매장이 깨끗해서','분위기가 좋아서','가까워서','쿠폰·혜택 때문에']},
       {id:'r_motive',type:'multicheck',label:'오늘은 어떤 자리로 오셨나요?',options:motive},
+      {id:'r_travel',type:'multicheck',label:'매장까지 오시는 데 얼마나 걸리셨어요?',options:travel},
       {id:'r_rate',type:'matrix',label:'오늘 어떠셨어요? (10점 만점)',items:rate},
-      {id:'r_free',type:'text',label:'더 좋아지려면 무엇이 필요할까요?'}
+      {id:'r_free',type:'text',label:'더 좋아지려면 무엇이 필요할까요?',placeholder:NEED}
     ]
   };
 }
@@ -6017,7 +6022,7 @@ function renderSurveyQuestions(){
     }else{
       curSurveyAnswers[q.id]='';
       return `<div style="margin-bottom:16px"><div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:6px">${q.label} <span style="color:var(--accent);font-weight:700;font-size:11px;background:var(--accent-light);padding:2px 7px;border-radius:8px;margin-left:4px">필수 · 스탬프 적립</span></div>
-      <textarea rows="3" placeholder="의견을 꼭 남겨주세요 — 스탬프가 적립됩니다 ✍️" oninput="curSurveyAnswers['${q.id}']=this.value;document.getElementById('survey-submit-error').innerHTML=''" style="width:100%;border:1.5px solid var(--border);background:var(--white);border-radius:14px;padding:12px 14px;font-size:14px;color:var(--t1);resize:none;outline:none;font-family:'Noto Sans KR',sans-serif;line-height:1.6"></textarea></div>`;
+      <textarea rows="3" placeholder="${q.placeholder||'의견을 꼭 남겨주세요 — 스탬프가 적립됩니다 ✍️'}" oninput="curSurveyAnswers['${q.id}']=this.value;document.getElementById('survey-submit-error').innerHTML=''" style="width:100%;border:1.5px solid var(--border);background:var(--white);border-radius:14px;padding:12px 14px;font-size:14px;color:var(--t1);resize:none;outline:none;font-family:'Noto Sans KR',sans-serif;line-height:1.6"></textarea></div>`;
     }
   }).join('');
   // 터치 드래그로 별점 조절
@@ -6102,11 +6107,17 @@ function submitSurvey(){
   const _qs=_activeSurveyQs();
   const _texts=_qs.filter(q=>q.type==='text');
   const textQ=_texts.length?_texts[_texts.length-1]:null;
-  if(textQ&&cfg.grantStamp==='survey'&&(!curSurveyAnswers[textQ.id]||!String(curSurveyAnswers[textQ.id]).trim())){
-    const errEl=document.getElementById('survey-submit-error');
-    if(errEl)errEl.innerHTML='<div class="error-msg" style="margin-bottom:0">아쉬운 부분을 입력해야 스탬프가 적립됩니다 ✍️</div>';
-    errEl.scrollIntoView({behavior:'smooth',block:'center'});
-    return;
+  /* 최소 5자 — "네","굿","ㅇㅇ" 같은 한 글자 답은 사장님에게 아무 정보가 안 된다.
+     설문의 목적이 '고칠 것을 찾는 것'이라 여기서 최소한의 길이는 받아야 한다. */
+  const SURVEY_MIN_LEN=5;
+  if(textQ&&cfg.grantStamp==='survey'){
+    const v=String(curSurveyAnswers[textQ.id]||'').trim();
+    if(v.length<SURVEY_MIN_LEN){
+      const errEl=document.getElementById('survey-submit-error');
+      if(errEl)errEl.innerHTML=`<div class="error-msg" style="margin-bottom:0">${v?`${SURVEY_MIN_LEN}자 이상 적어주세요 (현재 ${v.length}자)`:'의견을 입력해야 스탬프가 적립됩니다'} ✍️</div>`;
+      errEl.scrollIntoView({behavior:'smooth',block:'center'});
+      return;
+    }
   }
   const card=getMyStampCard();
   const surveyKey='survey_'+today()+'_'+(currentUser?.id||'guest');
