@@ -2794,7 +2794,11 @@ function migrateStore(s){
     s.diceGame.v=_d.v;
     s.diceGame.tiles=null;
   }
-  if(!s.diceGame.tiles||s.diceGame.tiles.length!==(s.diceGame.boardSize||20))s.diceGame.tiles=_diceBuildTiles(s.diceGame.prizes,s.diceGame.boardSize||20);
+  // tilesV: 칸 배치 규칙 버전. 2 = 더블 굴림 방지 보정 적용본
+  if(!s.diceGame.tiles||s.diceGame.tiles.length!==(s.diceGame.boardSize||20)||(s.diceGame.tilesV||0)<2){
+    s.diceGame.tiles=_diceBuildTiles(s.diceGame.prizes,s.diceGame.boardSize||20);
+    s.diceGame.tilesV=2;
+  }
   // 네이버 클립 미션 추가 (기존 매장에도 카카오맵 뒤에 끼워넣기 — 다른 미션 순서/설정은 건드리지 않음)
   if(s.diceGame.missions&&!s.diceGame.missions.some(m=>m.id==='clip')){
     const kIdx=s.diceGame.missions.findIndex(m=>m.id==='kakao');
@@ -2923,6 +2927,59 @@ function _diceBuildTiles(prizes,boardSize){
     tiles.push(prizes[best].id);
     cur[best]-=boardSize;
   }
+  // 배치가 끝난 뒤 '한 번에 닿을 수 있는지'를 보정한다 (더블 굴림 방지)
+  return _diceEnsureReachable(tiles,prizes);
+}
+
+/* ════════ 더블(2연속 굴림) 방지 ════════
+   ⚠️ 왜 반드시 없애야 하는가:
+      더블이 걸리면 펭귄이 중간 칸에 '착지'했다가 주사위를 다시 던져 굴러간다.
+      고객 눈에는 그 중간 칸(예: 음료수, 스탬프)에 당첨된 것처럼 보였다가
+      게임이 계속되는 것으로 읽혀 "당첨됐는데 왜 또 굴러가지?"가 된다.
+      실제로 이 화면을 본 사장님이 치명적 오류로 신고한 지점이다.
+
+   ⚠️ 칸 수를 늘려도 확률은 바뀌지 않는다.
+      당첨은 오직 weight로 뽑고(_diceWeightedPick), 칸은 '뽑힌 상품까지 어디로 보낼지'만
+      정하기 때문에 같은 상품을 여러 칸에 두어도 당첨률에 영향이 없다.
+
+   조건: 같은 상품의 이웃 간격이 모두 11 이하이면 어느 위치에서든 한 번에 닿는다.
+        (거리가 1이라 못 가는 경우에도 그 다음 칸이 1+11=12 이내라 주사위 합으로 표현 가능) */
+function _diceGapInfo(tiles,id){
+  const n=tiles.length,idx=[];
+  for(let i=0;i<n;i++)if(tiles[i]===id)idx.push(i);
+  if(!idx.length)return{count:0,max:n+1,at:0};
+  let max=0,at=idx[0];
+  for(let k=0;k<idx.length;k++){
+    const a=idx[k],b=idx[(k+1)%idx.length];
+    const g=(((b-a)%n)+n)%n||n;   // 칸이 하나뿐이면 한 바퀴(n)
+    if(g>max){max=g;at=a;}
+  }
+  return{count:idx.length,max,at};
+}
+function _diceEnsureReachable(tiles,prizes){
+  const DICE_MAX_GAP=11;   // 함수 안에 둔다 — 모듈 로드 시 migrateStore가 먼저 호출되기 때문
+  const n=tiles.length,ids=prizes.map(p=>p.id);
+  for(let guard=0;guard<300;guard++){
+    let worst=null;
+    ids.forEach(id=>{
+      const g=_diceGapInfo(tiles,id);
+      if(g.max>DICE_MAX_GAP&&(!worst||g.max>worst.max))worst={id,...g};
+    });
+    if(!worst)break;                       // 모든 상품이 조건 충족 → 더블 발생 불가
+    const counts={};ids.forEach(id=>counts[id]=0);
+    tiles.forEach(t=>{if(counts[t]!==undefined)counts[t]++;});
+    // 칸을 가장 많이 차지한 상품에서 한 칸만 빌려온다 (남은 칸이 2개 이하면 그 상품이 깨지므로 중단)
+    const donor=ids.filter(id=>id!==worst.id).sort((a,b)=>counts[b]-counts[a])[0];
+    if(!donor||counts[donor]<=2)break;
+    const target=(worst.at+Math.floor(worst.max/2))%n;   // 가장 벌어진 간격의 한가운데
+    let placed=false;
+    for(let d=0;d<n&&!placed;d++){
+      for(const cand of [(target+d)%n,(target-d+n)%n]){
+        if(tiles[cand]===donor){tiles[cand]=worst.id;placed=true;break;}
+      }
+    }
+    if(!placed)break;
+  }
   return tiles;
 }
 
@@ -2961,6 +3018,18 @@ function getMyDiceState(){
   return STORE.diceState[currentUser.id];
 }
 
+/* 주사위 출처 큐 — 먼저 받은 주사위부터 먼저 쓰인다(FIFO).
+   미션으로 받은 게 아니면(직원 수동 충전 등) 그 사유를 넣는다. */
+function _dicePushSource(state,label,count){
+  if(!state.diceSources)state.diceSources=[];
+  for(let i=0;i<(count||1);i++)state.diceSources.push(label||'');
+  if(state.diceSources.length>50)state.diceSources=state.diceSources.slice(-50);
+}
+function _dicePopSource(state){
+  if(!state.diceSources||!state.diceSources.length)return '';
+  return state.diceSources.shift()||'';
+}
+
 // 상품 1개 추첨 + 이동 경로 계산 (지급은 하지 않음 — 화면 연출용 미리보기)
 function rollDicePreview(){
   const cfg=STORE.diceGame;
@@ -2975,14 +3044,17 @@ function rollDicePreview(){
 function resolveJackpot(prize){return _diceWeightedPick(prize.sub);}
 
 // 실제 지급 처리: 스탬프 자동 적립 / 쿠폰 자동 발급 / 한번더 / 잭팟은 2차 추첨 후 직원확인 쿠폰 발급
-function grantDicePrize(prize){
+function grantDicePrize(prize,src){
   const state=getMyDiceState();
+  const _from=src?String(src):'';
+  const _cond=_from?(_from+' 참여 확인 후 제공'):'직원 확인 후 제공';
   if(prize.type==='stamp'){
     // 게임에서 바로 스탬프를 적립하지 않는다 — 직원이 확인 후 처리하는 쿠폰으로 발급해 남용을 막는다
     const amt=prize.amount||1;
     const cid=genId();
-    STORE.coupons.unshift({id:cid,uid:currentUser.id,name:'⭐ 스탬프 '+amt+'개 적립권',benefit:'스탬프 '+amt+'개 적립',
-      expires:expDate(30),cond:'직원 확인 후 적립',status:'available',created:today(),staffCheck:true,grantsStamp:amt});
+    STORE.coupons.unshift({id:cid,uid:currentUser.id,name:(_from?_from+' · ':'')+'⭐ 스탬프 '+amt+'개 적립권',benefit:'스탬프 '+amt+'개 적립',
+      expires:expDate(30),cond:_from?(_from+' 참여 확인 후 적립'):'직원 확인 후 적립',status:'available',created:today(),
+      staffCheck:true,grantsStamp:amt,mission:_from});
     saveState();
     return{kind:'stamp',amount:amt};
   }
@@ -2993,12 +3065,14 @@ function grantDicePrize(prize){
   if(prize.type==='jackpot'){
     const sub=resolveJackpot(prize);
     const cid=genId();
-    STORE.coupons.unshift({id:cid,uid:currentUser.id,name:'🎁 당첨: '+sub.label,benefit:sub.benefit,expires:expDate(30),cond:'직원 확인 후 제공',status:'available',created:today(),staffCheck:true});
+    STORE.coupons.unshift({id:cid,uid:currentUser.id,name:(_from?_from+' · ':'')+'🎁 당첨: '+sub.label,benefit:sub.benefit,
+      expires:expDate(30),cond:_cond,status:'available',created:today(),staffCheck:true,mission:_from});
     saveState();
     return{kind:'jackpot',sub};
   }
   const cid=genId();
-  STORE.coupons.unshift({id:cid,uid:currentUser.id,name:'🎲 '+prize.label,benefit:prize.benefit,expires:expDate(30),cond:'1인 1회',status:'available',created:today(),isDice:true});
+  STORE.coupons.unshift({id:cid,uid:currentUser.id,name:(_from?_from+' · ':'🎲 ')+prize.label,benefit:prize.benefit,
+    expires:expDate(30),cond:_cond,status:'available',created:today(),isDice:true,mission:_from});
   saveState();
   return{kind:'coupon',prize};
 }
@@ -3017,7 +3091,8 @@ function rollDice(){
   const legPositions=[]; // 화면 연출용: 각 굴림(더블 포함) 직후 위치
   route.legs.forEach(leg=>{pos=pos+leg.sum;legPositions.push(pos);});
   state.pos=pos;
-  const grant=grantDicePrize(prize);
+  const _src=_dicePopSource(state);   // 이번에 쓰는 주사위의 출처(미션명)
+  const grant=grantDicePrize(prize,_src);
   saveState();
   logEvent('game_play',{game:'dice',prize:prize.id,label:prize.label,cost:+prize.cost||0,kind:grant&&grant.kind});
   return{prize,route,fromPos,toPos:pos,legPositions,grant};
@@ -3407,7 +3482,12 @@ function _diceMarkMissionDone(id,bonus){
   state.missionsDone.push(id+'_'+today());
   try{localStorage.removeItem(_dwellKey());}catch(e){}
   const mission=(STORE.diceGame.missions||[]).find(m=>m.id===id);
-  state.dice+=(mission&&mission.dice||1)+(bonus||0);
+  const _n=(mission&&mission.dice||1)+(bonus||0);
+  state.dice+=_n;
+  /* 이 주사위가 '무슨 미션으로' 생겼는지 기록해 둔다.
+     굴려서 나온 쿠폰에 그대로 찍어야, 매장에서 "이 손님이 뭘 하고 받은 상품인지"를
+     보고 줄 수 있다. 기록이 없으면 직원이 근거 없이 상품을 내주게 된다. */
+  _dicePushSource(state,(mission&&mission.label)||id,_n);
   saveState();
   logEvent('mission_done',{mission:id,by:'dwell',bonus:bonus||0});
 }
@@ -4764,13 +4844,20 @@ function initAudio(){if(!audioCtx){try{audioCtx=new(window.AudioContext||window.
    파일을 여러 개 만들어야 한다. 합성하면 0KB에 음정을 자유롭게 올릴 수 있다.
    한 칸씩 갈 때마다 음이 한 계단씩 올라가서(도레미파솔라시도)
    '뽀↗작↗작↗' 하고 계단을 오르는 느낌이 나고, 몇 칸 갔는지 귀로도 느껴진다. */
-const _HOP_SCALE=[0,2,4,5,7,9,11,12,14,16,17,19]; // 반음 간격(장음계)
+/* 도레미파솔라시도 까지 올라간 뒤 시라솔파미레도 로 내려온다.
+   계속 올라가기만 하면 음이 한없이 높아져 귀에 거슬린다. */
+const _HOP_SCALE=[0,2,4,5,7,9,11,12]; // 도레미파솔라시도
+function _hopSemi(step){
+  const L=_HOP_SCALE.length, period=2*(L-1);   // 올라갔다 내려오는 한 주기
+  const i=((step%period)+period)%period;
+  return _HOP_SCALE[i<L?i:period-i];           // 0..7 올라가고 6..1 내려옴
+}
 function playHopSound(step){
   initAudio();
   if(!audioCtx||audioCtx.state!=='running')return;
   try{
     const t=audioCtx.currentTime;
-    const semi=_HOP_SCALE[Math.min(step,_HOP_SCALE.length-1)];
+    const semi=_hopSemi(step);
     const f=523.25*Math.pow(2,semi/12);            // C5 기준으로 한 칸씩 상승
     const o=audioCtx.createOscillator(),g=audioCtx.createGain();
     o.type='triangle';                              // 사인보다 살짝 통통한 소리
@@ -5769,17 +5856,25 @@ function renderCoupons(tab){
     const selCount=_selCoupIds.size;
     const tipHtml=`<div style="margin:0 16px 12px;padding:12px 14px;background:var(--blue-light);border-radius:12px;font-size:13px;color:var(--blue);font-weight:600">
       🎯 오늘 사용할 쿠폰을 선택하세요 (${selCount}/${usableSlots}개) — 나머지는 다음 방문 시 사용해요 🎁</div>`;
+    /* ⚠️ 카드 전체를 '선택 토글'로 만들면 안 된다.
+       그러면 쿠폰 상세(QR·직원 확인 버튼)로 들어갈 방법이 사라져서
+       매장에서 쿠폰을 사용 처리할 수가 없다. 실제로 그 상태로 배포됐었다.
+       → 카드 본문 탭 = 상세 열기(사용 처리),  오른쪽 배지 탭 = 오늘 쓸 쿠폰 선택 */
     el.innerHTML=tipHtml+coupons.map((c)=>{
       const isSel=_selCoupIds.has(c.id);
       const canSel=isSel||selCount<usableSlots;
-      return `<div onclick="${canSel?`toggleCoupSel('${c.id}')`:'toast(\'오늘 사용 쿠폰은 '+usableSlots+'개까지 선택 가능해요\')'}">
-        <div class="list-item card" style="margin:0 16px 10px;border-radius:14px;${isSel?'':'opacity:.65'}">
-          <div class="li-icon" style="background:${isSel?'var(--blue-light)':'var(--yellow-light)'}">🎟️</div>
-          <div class="li-body"><div class="li-title">${c.name}</div>
-          <div class="li-sub">${isSel?c.benefit+' · '+c.expires+'까지':'다음 방문 시 사용 가능'}</div></div>
-          <span class="li-badge ${isSel?'badge-blue':'badge-yellow'}">${isSel?'오늘 사용':'다음방문'}</span>
-          ${isSel?'<span style="font-size:18px;color:var(--blue);margin-left:4px">✓</span>':''}
-        </div></div>`;
+      const toggle=canSel?`toggleCoupSel('${c.id}')`:`toast('오늘 사용 쿠폰은 ${usableSlots}개까지 선택 가능해요')`;
+      return `<div class="list-item card" style="margin:0 16px 10px;border-radius:14px;${isSel?'':'opacity:.72'}">
+          <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;cursor:pointer" onclick="showCpnDetail('${c.id}')">
+            <div class="li-icon" style="background:${isSel?'var(--blue-light)':'var(--yellow-light)'}">🎟️</div>
+            <div class="li-body"><div class="li-title">${c.name}</div>
+            <div class="li-sub">${c.benefit} · ${c.expires}까지</div></div>
+          </div>
+          <button onclick="event.stopPropagation();${toggle}"
+            style="border:1.5px solid ${isSel?'var(--blue)':'var(--border)'};background:${isSel?'var(--blue-light)':'var(--white)'};
+            color:${isSel?'var(--blue)':'var(--t3)'};border-radius:20px;padding:6px 11px;font-size:11px;font-weight:800;
+            cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0">${isSel?'✓ 오늘 사용':'다음방문'}</button>
+        </div>`;
     }).join('');
     return;
   }
@@ -8377,7 +8472,7 @@ function refreshDiceCost(){
 function setDiceWeight(i,val){
   const cfg=_diceCfg();
   cfg.prizes[i].weight=Math.min(100,Math.max(0,Math.round(+val||0)));
-  cfg.tiles=_diceBuildTiles(cfg.prizes,cfg.boardSize||20); // 확률이 바뀌면 칸 배치도 즉시 재계산
+  cfg.tiles=_diceBuildTiles(cfg.prizes,cfg.boardSize||20);cfg.tilesV=2; // 확률이 바뀌면 칸 배치도 즉시 재계산
   saveState();
   renderRouletteAdmin(document.getElementById('admin-body'));
 }
@@ -8390,7 +8485,7 @@ function normalizeDiceWeights(){
     if(i===cfg.prizes.length-1)p.weight=Math.max(0,100-acc);
     else{p.weight=Math.round((+p.weight||0)/total*100);acc+=p.weight;}
   });
-  cfg.tiles=_diceBuildTiles(cfg.prizes,cfg.boardSize||20);
+  cfg.tiles=_diceBuildTiles(cfg.prizes,cfg.boardSize||20);cfg.tilesV=2;
   saveState();
   renderRouletteAdmin(document.getElementById('admin-body'));
   toast('확률 합계를 100%로 맞췄어요');
