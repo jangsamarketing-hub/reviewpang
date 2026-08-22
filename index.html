@@ -2351,6 +2351,41 @@ function _notifyNewStore(storeId,storeData){
       body:JSON.stringify({record:{store_id:storeId,data:storeData}})
     }).catch(()=>{});
   }catch(e){}
+  _sheetLog('store_signup',{
+    매장ID:storeId,
+    매장명:(storeData.profile&&storeData.profile.name)||'',
+    대표자명:(storeData.owner&&storeData.owner.name)||'',
+    연락처:(storeData.owner&&storeData.owner.phone)||'',
+    업종:(storeData.profile&&storeData.profile.category)||'',
+    네이버플레이스:storeData.naverPlaceUrl||'',
+    관리자이메일:storeData.adminEmail||'',
+    매장주소:buildStoreUrl(storeId),
+    마케팅수신동의:(storeData.owner&&storeData.owner.marketing)?'동의':'미동의'
+  });
+}
+
+/* ════════════════ 📗 구글시트 리드 적재 ════════════════
+   Supabase 테이블(store_events)과 별개로, 사장님 가입 리드를 구글시트에 바로 쌓는다.
+   Apps Script 웹앱 URL만 있으면 되고 서버가 필요 없어서, 스키마 작업과 무관하게
+   지금 당장 리드가 눈에 보이는 곳에 모인다.
+
+   ⚠️ 여기로 보내는 건 '사장님 가입 정보'뿐이다.
+      매장이 모은 고객 연락처는 그 매장의 개인정보라, 플랫폼 시트로 자동 전송하면
+      제3자 제공에 해당할 수 있다. 고객 데이터는 매장별로 두고 엑셀로 내보낸다.
+
+   URL은 총괄관리자 화면에서 등록한다(코드 수정 불필요). */
+function _sheetLog(type,payload){
+  try{
+    const url=_platformConfig.sheetWebhookUrl;
+    if(!url)return;
+    // Apps Script는 CORS 프리플라이트를 막으므로 no-cors + text/plain 으로 보낸다.
+    // 응답은 못 읽지만 시트 기록은 정상 동작한다.
+    fetch(url,{
+      method:'POST',mode:'no-cors',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({type,at:nowStr(),...payload})
+    }).catch(()=>{});
+  }catch(e){}
 }
 /* ════════════════ 📒 고객 행동 원장 (store_events) ════════════════
    QR 스캔부터 게임·리뷰·설문·쿠폰 사용까지를 append-only 로그로 남긴다.
@@ -4285,6 +4320,24 @@ function renderPlatform(){
       </div>
     </div>
 
+    <!-- 구글시트 리드 연동 -->
+    <div class="card card-pad" style="margin-bottom:12px;border-color:#1D6F42">
+      <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">📗 구글시트로 가입 리드 받기</div>
+      <div style="font-size:11.5px;color:var(--t3);line-height:1.7;margin-bottom:10px">
+        사장님이 가입하면 <b>구글시트에 한 줄씩</b> 자동으로 쌓입니다. 서버 없이 동작해요.<br>
+        <span style="color:var(--t4)">시트 → 확장 프로그램 → Apps Script → 배포(웹앱, 액세스 권한 "모든 사용자") → 나온 URL을 여기 붙여넣기</span>
+      </div>
+      <input id="pc-sheeturl" value="${(_platformConfig.sheetWebhookUrl||'').replace(/"/g,'&quot;')}" placeholder="https://script.google.com/macros/s/AKfy.../exec"
+        style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:12.5px;background:var(--white);color:var(--t1);font-family:Noto Sans KR,sans-serif">
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn-ghost" style="width:auto;flex:1;padding:9px;font-size:12px;font-weight:700;color:#1D6F42;border-color:#1D6F42" onclick="saveSheetWebhook()">저장</button>
+        <button class="btn-ghost" style="width:auto;flex:1;padding:9px;font-size:12px;font-weight:700" onclick="testSheetWebhook()">🧪 테스트 한 줄 보내기</button>
+      </div>
+      <div style="font-size:10.5px;color:var(--t4);margin-top:8px;line-height:1.6">
+        ※ <b>사장님 가입 정보만</b> 전송됩니다. 매장이 모은 고객 연락처는 그 매장의 개인정보라 보내지 않아요.
+      </div>
+    </div>
+
     <!-- 홈 설정 -->
     <div class="card card-pad" style="margin-bottom:12px">
       <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:12px">🏠 홈 화면 설정</div>
@@ -4542,6 +4595,30 @@ function resetFunnelTexts(){
   toast('기본 문구로 되돌렸습니다');
 }
 function bulkSetPremium(enable){_platformConfig.forceAllPremium=enable;_savePConf();renderPlatform();toast(enable?'🔓 전체 기능 무료 개방 ON':'🔒 개별 플랜 적용 모드로 전환');}
+
+/* 구글시트 웹훅 URL 저장 — 코드 수정 없이 총괄관리자에서 바로 등록한다.
+   _savePConfRemote 로 Supabase에도 올려 다른 기기에서도 같은 설정이 적용된다. */
+function saveSheetWebhook(){
+  const el=document.getElementById('pc-sheeturl');
+  const v=(el&&el.value||'').trim();
+  if(v&&!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(v)){
+    toast('Apps Script 웹앱 주소가 아니에요 (…/exec 로 끝나야 해요)');return;
+  }
+  if(v)_platformConfig.sheetWebhookUrl=v; else delete _platformConfig.sheetWebhookUrl;
+  _savePConf();_savePConfRemote();
+  toast(v?'📗 구글시트 연동을 저장했어요':'구글시트 연동을 해제했어요');
+}
+function testSheetWebhook(){
+  const el=document.getElementById('pc-sheeturl');
+  const v=(el&&el.value||'').trim();
+  if(!v){toast('먼저 시트 주소를 입력해주세요');return;}
+  const prev=_platformConfig.sheetWebhookUrl;
+  _platformConfig.sheetWebhookUrl=v;
+  _sheetLog('store_signup',{매장ID:'TEST',매장명:'🧪 연결 테스트',대표자명:'테스트',연락처:'010-0000-0000',
+    업종:'테스트',네이버플레이스:'',관리자이메일:'',매장주소:'',마케팅수신동의:'테스트'});
+  _platformConfig.sheetWebhookUrl=prev;
+  toast('시트에 테스트 한 줄을 보냈어요. 확인 후 지워주세요');
+}
 function resetStoreData(id){
   if(!confirm('이 매장의 고객/쿠폰/설문 등 모든 데이터를 초기화할까요?\n매장 프로필(이름/주소)은 유지됩니다. 복구 불가.'))return;
   const old=storesDB[id];
