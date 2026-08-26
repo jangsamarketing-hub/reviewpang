@@ -1267,14 +1267,17 @@ body.dark .dice-side-jp .dsj-item{background:linear-gradient(160deg,#4A3A18,#3A2
     const k1url=_p('kakaoUrl','https://litt.ly/jangsa.master');
     const k1label=_p('kakaoLabel','카카오톡 문의하기');
     const k1sub=_p('kakaoSub','litt.ly/jangsa.master');
-    const k2url=_p('openKakaoUrl','https://open.kakao.com/o/sMHU7wzi');
+    const k2url=_p('openKakaoUrl','https://open.kakao.com/me/jangsa_master');
     const k2label=_p('openKakaoLabel','오픈카카오 문의');
     const k2sub=_p('openKakaoSub','장사천재 김도겸 오픈채팅');
     const igUrl=_p('instaUrl','https://instagram.com/jangsa.master');
     const igLabel=_p('instaLabel','인스타그램');
     const igSub=_p('instaSub','instagram.com/jangsa.master');
+    const chUrl=_p('challengeUrl','https://jangsamaker.vercel.app/');
+    const chLabel=_p('challengeLabel','내 매장 살리기 챌린지 · 신청하기');
+    const chSub=_p('challengeSub','jangsamaker.vercel.app');
     const siteUrl=_p('siteUrl','https://jangsa-master.vercel.app/');
-    const siteLabel=_p('siteLabel','장사천재 김도겸 사이트');
+    const siteLabel=_p('siteLabel','고객이 찾아오는 매장 만들기 · 관리받기');
     const siteSub=_p('siteSub','jangsa-master.vercel.app');
     const footer=_p('footerCopy','© 2025 리뷰이벤트 플랫폼 by 장사천재 김도겸');
     const footerSub=_p('footerSub','사업자등록: 문의 시 제공');
@@ -1295,6 +1298,11 @@ body.dark .dice-side-jp .dsj-item{background:linear-gradient(160deg,#4A3A18,#3A2
        <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#f58529,#dd2a7b,#8134af);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📸</div>
        <div><div style="font-size:14px;font-weight:700;color:#fff">${igLabel}</div><div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:1px">${igSub}</div></div>
        <div style="margin-left:auto;color:rgba(255,255,255,0.3);font-size:16px">›</div>
+      </a>
+      <a href="${chUrl}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(255,107,0,.22),rgba(255,255,255,0.06));border:1px solid rgba(255,140,60,.45);border-radius:14px;padding:14px 18px;text-decoration:none">
+       <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#FF8B42,#FF5A2F);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🚀</div>
+       <div><div style="font-size:14px;font-weight:700;color:#fff">${chLabel}</div><div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:1px">${chSub}</div></div>
+       <div style="margin-left:auto;color:rgba(255,255,255,0.35);font-size:16px">›</div>
       </a>
       <a href="${siteUrl}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:14px 18px;text-decoration:none">
        <div style="width:36px;height:36px;border-radius:10px;background:#FF6B00;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🌐</div>
@@ -3507,17 +3515,37 @@ function _diceMarkMissionDone(id,bonus){
   saveState();
   logEvent('mission_done',{mission:id,by:'dwell',bonus:bonus||0});
 }
+/* ── 무료 플랜 미션 제한 ──
+   무료는 미션 3개까지만 연다.
+     ① 만족도 설문   (고정 — 매장 진단 데이터의 핵심)
+     ② 네이버 리뷰   (고정 — 매출에 가장 직결)
+     ③ 그 외 1개     (사장님이 관리자에서 선택)
+   매장마다 주력 채널이 달라서(카카오맵 vs 구글 vs 인스타) 세 번째는 고르게 한다.
+   고객이 매번 고르게 하면 리뷰가 여러 채널로 분산돼 효과가 죽는다.
+   더 열고 싶으면 유료 전환 또는 문의로 유도한다. */
+const FREE_FIXED_MISSIONS=['survey','naver'];
+const FREE_MISSION_LIMIT=3;
+function freePickedMission(){
+  const cfg=STORE&&STORE.diceGame;
+  return (cfg&&cfg.freeMission)||'kakao';   // 기본 선택: 카카오맵
+}
+// 이 미션이 지금 플랜에서 잠겨 있는가
+function isMissionLocked(m){
+  if(isPremium())return false;                       // 프리미엄은 전부 개방
+  if(FREE_FIXED_MISSIONS.includes(m.id))return false; // 고정 2개
+  return m.id!==freePickedMission();                  // 사장님이 고른 1개만 개방
+}
 function openDiceMissions(){
   const missions=STORE.diceGame.missions||[];
   let nextFound=false;
   const html=missions.map(m=>{
     const done=_diceMissionDoneToday(m.id);
-    const locked=m.premium&&!isPremium();
+    const locked=isMissionLocked(m);
     const isNext=!done&&!locked&&!nextFound;
     if(isNext)nextFound=true;
     const _mIcons={naver:'🟢',kakao:'💛',clip:'🎬',google:'🔵',insta:'📸'};
     const icon=done?'✅':locked?'🔒':(m.verify==='internal'?'📝':(_mIcons[m.id]||'🎁'));
-    const sub=done?'오늘 완료했어요':locked?'사장님 플랜 업그레이드가 필요해요':(m.id==='survey'?'30초면 끝나요 · 가장 쉬워요':m.id==='clip'?'짧은 영상으로 남겨주세요':'문구를 만들어 드려요');
+    const sub=done?'오늘 완료했어요':locked?'지금은 잠겨 있어요 · 사장님께 문의':(m.id==='survey'?'30초면 끝나요 · 가장 쉬워요':m.id==='clip'?'짧은 영상으로 남겨주세요':'문구를 만들어 드려요');
     const click=done?'':locked?'showVipModal()':('startDiceMission(\''+m.id+'\')');
     return `<div class="dmission${isNext?' focus':''}${done?' done':''}${locked?' lock':''}" onclick="${click}">`+
       `<span class="dm-ic">${icon}</span><span class="dm-tx">${m.label}<small>${sub}</small></span>`+
@@ -3530,7 +3558,7 @@ function closeDiceMissions(){document.getElementById('dice-mission-overlay').sty
 function startDiceMission(id){
   const m=(STORE.diceGame.missions||[]).find(x=>x.id===id);
   if(!m)return;
-  if(m.premium&&!isPremium()){showVipModal();return;}
+  if(isMissionLocked(m)){showVipModal();return;}   // 화면을 우회해 직접 호출해도 막는다
   closeDiceMissions();
   if(m.verify==='internal'){_diceMissionActive=id;show('s-survey');return;}
   if(id==='clip'){openDiceDwell(id);return;} // 영상 미션은 문구 조립 없이 바로 체류시간 검증
@@ -4456,7 +4484,7 @@ function renderPlatform(){
         </div>
         <div>
           <div style="font-size:11px;font-weight:700;color:var(--t3);margin-bottom:4px">🔗 오픈카카오 — URL</div>
-          <input id="pc-k2url" value="${_pconf('openKakaoUrl','https://open.kakao.com/o/sMHU7wzi')}" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;background:var(--white);color:var(--t1);font-family:Noto Sans KR,sans-serif">
+          <input id="pc-k2url" value="${_pconf('openKakaoUrl','https://open.kakao.com/me/jangsa_master')}" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;background:var(--white);color:var(--t1);font-family:Noto Sans KR,sans-serif">
         </div>
         <div>
           <div style="font-size:11px;font-weight:700;color:var(--t3);margin-bottom:4px">🔗 오픈카카오 — 서브텍스트</div>
@@ -7250,12 +7278,19 @@ function renderCustomersTab(el){
     <div id="bulk-action-bar" style="display:none;margin:0 16px 10px;padding:12px 14px;background:var(--blue-light);border-radius:12px;border:1.5px solid var(--blue)">
       <div style="font-size:13px;font-weight:700;color:var(--blue);margin-bottom:8px" id="bulk-count-label">0명 선택됨</div>
       <div style="display:flex;flex-direction:column;gap:8px">
-        <button onclick="${isPremium()?'bulkRechargeDice(1)':'showVipModal()'}" class="btn btn-sm" style="background:linear-gradient(160deg,#FFC46B,#FF8B42);color:#fff;font-weight:800;box-shadow:0 3px 10px -3px rgba(255,139,66,.6)">🎲 주사위 1개 충전 + 알림 문자${isPremium()?'':' 👑'}</button>
+        ${isPremium()?`
+        <button onclick="bulkRechargeDice(1)" class="btn btn-sm" style="background:linear-gradient(160deg,#FFC46B,#FF8B42);color:#fff;font-weight:800;box-shadow:0 3px 10px -3px rgba(255,139,66,.6)">🎲 주사위 1개 충전 + 알림 문자</button>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button onclick="${isPremium()?'bulkSendPromo()':'showVipModal()'}" class="btn btn-light btn-sm">📢 매장 이벤트 문자</button>
+          <button onclick="bulkSendPromo()" class="btn btn-light btn-sm">📢 매장 이벤트 문자</button>
           <button onclick="bulkCopyMessages()" class="btn btn-light btn-sm">📋 문구 복사</button>
         </div>
         <div style="font-size:11px;color:var(--t3);line-height:1.6">💡 주사위를 굴리려면 리뷰 미션을 해야 해서, 충전 문자 한 통이 <b>재방문 + 리뷰</b>로 이어져요. 최근 ${STORE.diceRechargeDays||7}일 내 충전한 고객은 자동으로 제외됩니다.</div>
+        `:`
+        <!-- 무료 플랜: 자동 발송은 잠그고 '문구 확인 → 직접 발송'만 연다 -->
+        <button onclick="previewCrmMessage()" class="btn btn-sm" style="background:var(--blue);color:#fff;font-weight:800">📋 보낼 문구 확인하고 복사하기</button>
+        <button onclick="showVipModal()" class="btn btn-light btn-sm" style="color:var(--t3)">📢 자동 발송·문구 수정 👑</button>
+        <div style="font-size:11px;color:var(--t3);line-height:1.6">💡 무료 플랜은 <b>문구를 복사해 직접 보내는 방식</b>이에요. 문구를 고치거나 앱에서 바로 발송하려면 문의해주세요.</div>
+        `}
       </div>
     </div>
 
@@ -7412,6 +7447,44 @@ function adSendGuard(users){
 // 매장이 직접 등록한 수신거부 연락처 (미등록 시 광고 문자 발송을 막는다)
 function storeOptOut(){return (STORE.profile&&STORE.profile.optOutContact||'').trim();}
 
+/* 무료 플랜 — 보낼 문구를 미리 보여주고 복사만 시킨다.
+   실제 발송(sms: 자동 실행)과 문구 수정은 프리미엄. */
+function previewCrmMessage(){
+  const users=getSelectedUsers();
+  if(!users.length){toast('선택된 고객이 없습니다');return;}
+  const {ok}=filterConsentedForAd(users);
+  const body=_crmFill((STORE.crmTemplates&&STORE.crmTemplates.dice)||'',null,{dice:1});
+  const phones=ok.map(u=>u.phone).join(', ');
+  if(document.getElementById('crm-preview-overlay'))return;
+  const m=document.createElement('div');
+  m.id='crm-preview-overlay';
+  m.style.cssText='position:fixed;inset:0;z-index:9300;display:flex;align-items:flex-end;background:rgba(0,0,0,.55)';
+  m.innerHTML=`<div style="width:100%;background:var(--white);border-radius:24px 24px 0 0;padding:20px 18px 32px;max-height:88vh;overflow-y:auto">
+    <div style="font-size:17px;font-weight:900;color:var(--t1);margin-bottom:4px">📋 이 문구를 보내시면 돼요</div>
+    <div style="font-size:12px;color:var(--t3);line-height:1.7;margin-bottom:14px">
+      아래 문구와 번호를 복사해서 <b>문자 앱에서 직접</b> 보내주세요.
+      ${ok.length<users.length?`<br><span style="color:var(--red)">※ ${users.length-ok.length}명은 마케팅 수신 미동의라 제외했어요</span>`:''}
+    </div>
+    <div style="font-size:12px;font-weight:800;color:var(--t2);margin-bottom:6px">보낼 문구</div>
+    <div style="background:var(--bg);border-radius:12px;padding:13px 14px;font-size:13px;line-height:1.8;color:var(--t1);white-space:pre-wrap;margin-bottom:8px">${(body||'(문구가 비어 있어요)').replace(/</g,'&lt;')}</div>
+    <button class="btn btn-blue btn-sm" onclick="_copyText(document.getElementById('crm-preview-overlay').dataset.body,'문구를 복사했어요 📋')">문구 복사</button>
+    <div style="font-size:12px;font-weight:800;color:var(--t2);margin:16px 0 6px">받는 사람 ${ok.length.toLocaleString()}명</div>
+    <div style="background:var(--bg);border-radius:12px;padding:12px 14px;font-size:12px;line-height:1.7;color:var(--t2);max-height:120px;overflow-y:auto;word-break:break-all;margin-bottom:8px">${phones||'(수신 동의 고객이 없어요)'}</div>
+    <button class="btn btn-light btn-sm" onclick="_copyText(document.getElementById('crm-preview-overlay').dataset.phones,'번호를 복사했어요 📋')">번호 복사</button>
+    <div style="background:linear-gradient(160deg,#FFF3D2,#FCE1A0);border-radius:12px;padding:12px 14px;font-size:11.5px;color:#7A4A06;line-height:1.75;margin-top:16px">
+      👑 <b>문구를 직접 고치거나</b>, 앱에서 <b>바로 발송</b>하고 싶으시면 문의해주세요.
+    </div>
+    <button class="btn btn-light" style="margin-top:10px" onclick="document.getElementById('crm-preview-overlay').remove()">닫기</button>
+  </div>`;
+  m.dataset.body=body; m.dataset.phones=phones;
+  document.body.appendChild(m);
+  m.addEventListener('click',e=>{if(e.target===m)m.remove();});
+}
+function _copyText(t,msg){
+  if(!t){toast('복사할 내용이 없어요');return;}
+  if(navigator.clipboard)navigator.clipboard.writeText(t).then(()=>toast(msg)).catch(()=>fallbackCopyText(t));
+  else fallbackCopyText(t);
+}
 function bulkCopyMessages(){
   const users=getSelectedUsers();
   if(!users.length){toast('선택된 고객이 없습니다');return;}
@@ -7920,7 +7993,7 @@ function isPremium(){return !!(_platformConfig.forceAllPremium||(STORE&&STORE.pr
       매장 앞에 붙여둔 QR이 손님 앞에서 죽으면 사장님이 곤란해지고,
       그동안 쌓이던 연락처·리뷰 데이터도 끊긴다. */
 const ACCESS_DAYS=30, ACCESS_WARN_DAYS=7;
-const OWNER_KAKAO_URL='https://open.kakao.com/o/sMHU7wzi';
+const OWNER_KAKAO_URL='https://open.kakao.com/me/jangsa_master';
 function _accessStart(){
   if(!STORE)return today();
   if(STORE.openedAt)return STORE.openedAt;
@@ -8095,7 +8168,7 @@ function showVipModal(){
       </div>
     `).join('')}
     <button id="vip-cta-btn" onclick="(()=>{const h=this.getAttribute('data-href');if(h)window.open(h,'_blank');})()" data-href="https://litt.ly/jangsa.master" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:6px;padding:15px;background:#FEE500;border-radius:14px;font-size:15px;font-weight:800;color:#191f28;text-decoration:none;width:100%;border:none;cursor:pointer;font-family:Noto Sans KR,sans-serif;box-shadow:0 4px 14px rgba(254,229,0,.35)">💬 요금제를 선택 후 문의하기</button>
-    <a href="https://open.kakao.com/o/sMHU7wzi" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;padding:13px;background:var(--bg);border:1.5px solid var(--border);border-radius:14px;font-size:13px;font-weight:700;color:var(--t1);text-decoration:none">🔗 오픈카카오로 문의하기</a>
+    <a href="https://open.kakao.com/me/jangsa_master" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;padding:13px;background:var(--bg);border:1.5px solid var(--border);border-radius:14px;font-size:13px;font-weight:700;color:var(--t1);text-decoration:none">🔗 오픈카카오로 문의하기</a>
     <button onclick="document.getElementById('vip-modal-overlay').remove()" style="display:block;width:100%;margin-top:14px;padding:12px;background:none;border:none;font-size:14px;color:var(--t3);cursor:pointer;font-family:Noto Sans KR,sans-serif">닫기</button>
   </div>`;
   document.body.appendChild(m);
@@ -8275,6 +8348,14 @@ function renderAdmin(tab){
   }
 }
 
+function setFreeMission(id){
+  if(!STORE.diceGame)return;
+  STORE.diceGame.freeMission=id;
+  saveState();
+  renderRouletteAdmin(document.getElementById('admin-body'));
+  const m=(STORE.diceGame.missions||[]).find(x=>x.id===id);
+  toast('🎯 '+((m&&m.label)||id)+' 미션을 열었어요');
+}
 function renderRouletteAdmin(el){
   if(STORE.setupChecklist&&!STORE.setupChecklist.gameConfirmed){STORE.setupChecklist.gameConfirmed=true;saveState();}
   const total=STORE.prizes.reduce((a,p)=>a+(+p.prob||0),0);
@@ -8282,6 +8363,37 @@ function renderRouletteAdmin(el){
   const lastIdx=STORE.prizes.length-1;
   const gm=STORE.gameMode||'roulette';
   el.innerHTML=`
+    ${isPremium()?'':`
+    <div class="card card-pad" style="margin-bottom:12px;border-color:#FF8B42">
+      <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px">🎯 리뷰 미션 선택 <span style="font-size:11px;color:var(--t4);font-weight:600">무료 플랜 · ${FREE_MISSION_LIMIT}개</span></div>
+      <div style="font-size:12px;color:var(--t3);line-height:1.7;margin-bottom:12px">
+        고객이 주사위를 받는 방법이에요. 무료 플랜은 <b>설문 + 네이버</b>가 기본으로 열려 있고,
+        <b>나머지 중 하나</b>를 고르실 수 있어요.
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:12px">
+        ${FREE_FIXED_MISSIONS.map(id=>{
+          const m=(STORE.diceGame.missions||[]).find(x=>x.id===id);
+          return `<div style="flex:1;background:var(--green-light);border:1.5px solid var(--green);border-radius:11px;padding:10px 8px;text-align:center">
+            <div style="font-size:12.5px;font-weight:800;color:#00a868">${m?m.label:id}</div>
+            <div style="font-size:10px;color:#0b7a4a;margin-top:2px">항상 열림</div></div>`;
+        }).join('')}
+      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:7px">세 번째 미션을 골라주세요</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${(STORE.diceGame.missions||[]).filter(m=>!FREE_FIXED_MISSIONS.includes(m.id)).map(m=>{
+          const on=freePickedMission()===m.id;
+          return `<button onclick="setFreeMission('${m.id}')" style="flex:1;min-width:100px;padding:11px 8px;border-radius:11px;cursor:pointer;font-family:inherit;
+            border:2px solid ${on?'#FF8B42':'var(--border)'};background:${on?'rgba(255,139,66,.1)':'var(--white)'}">
+            <div style="font-size:12.5px;font-weight:800;color:${on?'#B5551A':'var(--t1)'}">${on?'✓ ':''}${m.label}</div>
+          </button>`;
+        }).join('')}
+      </div>
+      <div style="margin-top:12px;background:var(--bg);border-radius:10px;padding:11px 12px;font-size:11.5px;color:var(--t3);line-height:1.7">
+        💡 여러 채널을 한꺼번에 열면 리뷰가 흩어져서 오히려 효과가 떨어져요.
+        <b>한 채널에 몰아주는 게</b> 순위에 유리합니다.
+      </div>
+      <button class="btn btn-sm" style="margin-top:10px;background:linear-gradient(160deg,#FFC46B,#FF8B42);color:#fff;font-weight:800" onclick="showVipModal()">🔓 미션 전부 열기 (문의)</button>
+    </div>`}
     <div class="card card-pad" style="border-color:var(--blue)">
       <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:10px">🎮 네이버 이벤트 게임 방식</div>
       <div onclick="setGameMode('dice')" style="padding:14px 12px;border-radius:14px;border:2px solid ${gm==='dice'?'var(--blue)':'var(--border)'};background:${gm==='dice'?'var(--blue-light)':'var(--white)'};cursor:pointer;position:relative;display:flex;align-items:center;gap:12px;margin-bottom:10px">
@@ -9150,8 +9262,14 @@ function renderSettingsAdmin(el){
       <button class="btn btn-blue" onclick="saveCouponPolicy()">쿠폰 정책 저장</button>
     </div>
 
-    <div class="card card-pad" style="border-color:#FF8B42">
-      <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px">✉️ 재접촉 문자 템플릿 2종</div>
+    <div class="card card-pad" style="border-color:#FF8B42${isPremium()?'':';position:relative'}">
+      ${isPremium()?'':`<div onclick="showVipModal()" style="position:absolute;inset:0;z-index:3;border-radius:16px;background:rgba(255,255,255,.72);backdrop-filter:blur(2.5px);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;padding:18px;text-align:center">
+        <div style="font-size:30px">🔒</div>
+        <div style="font-size:14px;font-weight:900;color:var(--t1);margin-top:6px">문구 수정은 프리미엄이에요</div>
+        <div style="font-size:11.5px;color:var(--t3);margin-top:5px;line-height:1.7">무료 플랜은 <b>고객·연락처 탭</b>에서<br>기본 문구를 확인하고 복사해 보내실 수 있어요</div>
+        <div style="margin-top:10px;background:#FEE500;color:#191f28;border-radius:10px;padding:9px 16px;font-size:12.5px;font-weight:800">💬 문의하기</div>
+      </div>`}
+      <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px">✉️ 재접촉 문자 템플릿 2종 ${isPremium()?'':'👑'}</div>
       <div style="font-size:12px;color:var(--t3);margin-bottom:12px;line-height:1.65">
         고객·연락처 탭에서 고객을 선택한 뒤 사용하는 문자 양식이에요.<br>
         사용 변수: <b>{고객명} {매장명} {링크} {주사위}</b></div>
