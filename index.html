@@ -5,27 +5,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#191f28">
 <meta name="color-scheme" content="light dark">
-<meta name="description" content="100% 당첨 룰렛 리뷰이벤트 — 스탬프 적립 받고 포인트 받아가세요.">
+<meta name="description" content="포인트적립·리뷰이벤트·CRM문자·설문조사를 한 번에. 고객과 리뷰가 쌓이는 장사 필수템.">
 <!-- 카카오톡·문자 공유 미리보기(OG)
      ⚠️ og:image 는 반드시 절대주소여야 한다. 상대경로면 카카오톡이 못 읽어 썸네일이 안 뜬다.
      ⚠️ webp 는 카카오톡이 썸네일로 안 받는 경우가 많아 jpg 로 둔다.
      ⚠️ 쿼리스트링(?v=)을 붙이면 못 읽는 스크래퍼가 있어 붙이지 않는다.
         이미지를 교체할 땐 파일명 자체를 바꾸고(og-image-2.jpg) 메타도 같이 고친다.
      ⚠️ 용량은 작을수록 안전하다 (현재 100KB). -->
-<meta property="og:title" content="100% 당첨 룰렛 리뷰이벤트">
-<meta property="og:description" content="스탬프 적립 받고 포인트 받아가세요 🎁">
+<meta property="og:title" content="고객과 리뷰가 쌓이는 장사필수템">
+<meta property="og:description" content="포인트적립 + 리뷰이벤트 + CRM무료문자 + 설문조사까지 한번에!">
 <meta property="og:type" content="website">
-<meta property="og:image" content="https://reviewpanguin.vercel.app/og-image.jpg">
+<meta property="og:image" content="https://reviewcrm.vercel.app/og-image.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:type" content="image/jpeg">
-<meta property="og:site_name" content="리뷰팽귄">
+<meta property="og:site_name" content="장사 필수템">
 <meta property="og:locale" content="ko_KR">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="100% 당첨 룰렛 리뷰이벤트">
-<meta name="twitter:description" content="스탬프 적립 받고 포인트 받아가세요 🎁">
-<meta name="twitter:image" content="https://reviewpanguin.vercel.app/og-image.jpg">
-<title>단골 이벤트 플랫폼</title>
+<meta name="twitter:title" content="고객과 리뷰가 쌓이는 장사필수템">
+<meta name="twitter:description" content="포인트적립 + 리뷰이벤트 + CRM무료문자 + 설문조사까지 한번에!">
+<meta name="twitter:image" content="https://reviewcrm.vercel.app/og-image.jpg">
+<title>장사 필수템 · 고객과 리뷰가 쌓이는 매장</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -2197,7 +2197,7 @@ const PROD_DOMAIN='matchissunzip.com'; // 실제 배포 시 보유 도메인으�
 function buildStoreUrl(uid){
   // localhost에서 접속 중이면 실제 배포 도메인 사용 (QR·링크 공유 가능하도록)
   const isLocal=location.hostname==='localhost'||location.hostname==='127.0.0.1';
-  const base=isLocal?'https://review-event-do.vercel.app':(location.origin+location.pathname.replace(/\/+$/,''));
+  const base=isLocal?'https://reviewcrm.vercel.app':(location.origin+location.pathname.replace(/\/+$/,''));
   return base+'?store='+uid;
 }
 function detectStoreId(){
@@ -3531,7 +3531,7 @@ function freePickedMission(){
 }
 // 이 미션이 지금 플랜에서 잠겨 있는가
 function isMissionLocked(m){
-  if(isPremium())return false;                       // 프리미엄은 전부 개방
+  if(hasFeature('missions'))return false;            // 미션 전체 개방 기능이 켜져 있으면 전부 열림
   if(FREE_FIXED_MISSIONS.includes(m.id))return false; // 고정 2개
   return m.id!==freePickedMission();                  // 사장님이 고른 1개만 개방
 }
@@ -3969,7 +3969,6 @@ function show(id){
   if(id==='s-myinfo')renderMyInfo();
   if(id==='s-admin'){
     renderAdmin('stats'); // 로컬 데이터로 즉시 렌더 (빠른 UX)
-    setTimeout(maybeShowAccessPopup,600);   // 종료 7일 전부터 하루 1회 안내
     _sbSync(STORE_ID).then(updated=>{if(updated)renderAdmin('stats');}); // 원격이 더 최신이면 재렌더
   }
   if(id==='s-notfound'){renderStoreSearchSection();applyFunnelTexts();}
@@ -4594,22 +4593,19 @@ function renderPlatform(){
           </div>
           <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
             <span class="li-badge ${s.approved?'badge-green':'badge-red'}">${s.approved?'승인됨':'대기'}</span>
-            ${(()=>{
-              if(s.premium)return '<span class="li-badge badge-blue">무제한</span>';
-              const left=Math.floor((new Date(accessUntilOf(s))-new Date(today()))/86400000);
-              if(left<0)return `<span class="li-badge badge-red">종료 D+${-left}</span>`;
-              return `<span class="li-badge ${left<=7?'badge-yellow':'badge-gray'}">${left}일 남음</span>`;
-            })()}
+            <span class="li-badge ${_pt(s)==='full'?'badge-blue':_pt(s)==='free'?'badge-gray':'badge-yellow'}">${PLAN_LABEL[_pt(s)]}${_pt(s)==='full'?'':' '+(PLAN_SLOTS[_pt(s)]||0)}</span>
             <span class="li-badge ${s.premium?'badge-blue':'badge-gray'}">${s.premium?'프리미엄':'무료'}</span>
           </div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn-ghost" style="width:auto;flex:1;padding:9px;font-size:12px;font-weight:600" onclick="togglePlatformApprove('${id}')">${s.approved?'매장 정지':'승인하기'}</button>
-          <button class="btn-ghost" style="width:auto;flex:1;padding:9px;font-size:12px;font-weight:600;${s.premium?'color:var(--blue);border-color:var(--blue)':''}" onclick="togglePlatformPremium('${id}')">${s.premium?'프리미엄 해제':'프리미엄 부여'}</button>
+          <button class="btn-ghost" style="width:auto;flex:1;padding:9px;font-size:12px;font-weight:600;${_pt(s)==='full'?'color:var(--blue);border-color:var(--blue)':''}" onclick="togglePlatformPremium('${id}')">${_pt(s)==='full'?'전체개방 해제':'전체 개방'}</button>
         </div>
         <div style="display:flex;gap:6px;margin-top:6px">
-          <button class="btn-ghost" style="width:auto;flex:1;padding:9px;font-size:12px;font-weight:600;color:#00a868;border-color:var(--green)" onclick="extendAccess('${id}',30)">🔓 30일 연장</button>
-          <button class="btn-ghost" style="width:auto;flex:1;padding:9px;font-size:12px;font-weight:600;color:#00a868;border-color:var(--green)" onclick="extendAccess('${id}',7)">＋7일</button>
+          ${[['free','무료','0'],['challenge','챌린지','1'],['client','클라이언트','3']].map(([t,label,n])=>{
+            const on=_pt(s)===t;
+            return `<button class="btn-ghost" style="width:auto;flex:1;padding:9px;font-size:11.5px;font-weight:700;${on?'color:#B5551A;border-color:#FF8B42;background:rgba(255,139,66,.09)':''}" onclick="setStorePlan('${id}','${t}')">${on?'✓ ':''}${label}<span style="opacity:.6"> ${n}</span></button>`;
+          }).join('')}
         </div>
         <div style="display:flex;gap:6px;margin-top:6px">
           <button class="btn-ghost" style="width:auto;flex:1;padding:9px;font-size:12px;font-weight:600" onclick="location.search='?store=${id}'">고객 화면 보기</button>
@@ -4659,7 +4655,26 @@ function bulkSendOwnerSMS(){
   toast(`${chks.length}개 업체에 문자 앱을 열었습니다 ✉️`);
 }
 function togglePlatformApprove(id){storesDB[id].approved=!storesDB[id].approved;saveStoresDB();renderPlatform();toast(storesDB[id].approved?'매장을 승인했습니다':'매장을 정지했습니다')}
-function togglePlatformPremium(id){storesDB[id].premium=!storesDB[id].premium;storesDB[id].plan=storesDB[id].premium?'premium':'free';saveStoresDB();_sbPush(id);renderPlatform();toast(storesDB[id].premium?'프리미엄을 부여했습니다':'프리미엄을 해제했습니다')}
+// 목록용 플랜 판정 (storePlan()은 현재 STORE 기준이라 매장 객체를 받는 별도 함수를 둔다)
+function _pt(s){
+  if(!s)return 'free';
+  if(s.premium)return 'full';
+  return PLAN_SLOTS[s.planTier]!==undefined?s.planTier:'free';
+}
+function setStorePlan(id,tier){
+  const s=storesDB[id];if(!s)return;
+  s.planTier=tier; s.premium=false; s.plan=tier;
+  if(!Array.isArray(s.features))s.features=[];
+  saveStoresDB();_sbPush(id);renderPlatform();
+  toast(`${s.profile.name} — ${PLAN_LABEL[tier]} 플랜 (기능 ${PLAN_SLOTS[tier]}개)`);
+}
+function togglePlatformPremium(id){
+  const s=storesDB[id];if(!s)return;
+  const full=_pt(s)==='full';
+  s.premium=!full; s.planTier=full?'free':'full'; s.plan=s.planTier;
+  saveStoresDB();_sbPush(id);renderPlatform();
+  toast(full?'전체 개방을 해제했습니다':'전체 기능을 개방했습니다');
+}
 /* ── 퍼널 문구 편집기 (총괄관리자 전용) ── */
 function _fnCurrent(k){
   if(_platformConfig[k]!==undefined&&_platformConfig[k]!=='')return _platformConfig[k];
@@ -7050,10 +7065,10 @@ function renderAdminCoupons(tab,q){
         <div style="font-size:12px;color:var(--t4);margin-bottom:8px">발급일: ${c.issued||'-'} · 만료: ${c.expires||'-'}</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn-ghost" style="width:auto;flex:1;padding:8px;font-size:12px;min-width:80px" onclick="copyCouponMessage('${c.id}')">📋 문구 복사</button>
-          <a href="${isPremium()?'sms:'+u.phone.replace(/-/g,'')+'?body='+encodeURIComponent('['+STORE.profile.name+'] '+c.name+' 쿠폰이 도착했어요! 매장 방문 시 사용해주세요 :)'):'#'}" onclick="${isPremium()?'':'event.preventDefault();showVipModal()'}" style="flex:1;text-decoration:none;min-width:80px">
+          <a href="${hasFeature('crm_sms')?'sms:'+u.phone.replace(/-/g,'')+'?body='+encodeURIComponent('['+STORE.profile.name+'] '+c.name+' 쿠폰이 도착했어요! 매장 방문 시 사용해주세요 :)'):'#'}" onclick="${isPremium()?'':'event.preventDefault();showVipModal()'}" style="flex:1;text-decoration:none;min-width:80px">
             <button class="btn-ghost" style="width:100%;padding:8px;font-size:12px;color:var(--blue);border-color:var(--blue)">💬 문자 보내기</button>
           </a>
-          ${isPremium()?'':'<div onclick="showVipModal()" style="flex-shrink:0;cursor:pointer;display:flex;align-items:center;padding:4px 8px;border:1.5px solid #f97316;border-radius:7px;background:rgba(249,115,22,0.08)"><span style="font-size:10px;font-weight:800;color:#f97316">👑VIP</span></div>'}
+          ${hasFeature('crm_sms')?'':'<div onclick="showVipModal()" style="flex-shrink:0;cursor:pointer;display:flex;align-items:center;padding:4px 8px;border:1.5px solid #f97316;border-radius:7px;background:rgba(249,115,22,0.08)"><span style="font-size:10px;font-weight:800;color:#f97316">👑VIP</span></div>'}
           ${c.sentAt?
             `<span style="font-size:11px;color:var(--green);font-weight:600;padding:8px 0">✅ 발송완료</span>`:
             `<button onclick="markCouponSent('${c.id}')" style="flex-shrink:0;padding:8px 10px;font-size:11px;border:1px solid var(--border);border-radius:8px;background:var(--white);color:var(--t3);cursor:pointer">발송완료 체크</button>`
@@ -7256,13 +7271,13 @@ function renderCustomersTab(el){
 
       <!-- 기간 슬라이더 바 (VIP) -->
       <div style="background:var(--bg);border-radius:14px;padding:16px 14px 12px;position:relative">
-        ${!isPremium()?'<div onclick="showVipModal()" style="position:absolute;top:10px;right:10px;z-index:2;background:linear-gradient(135deg,#ff9900,#f97316);border-radius:20px;padding:3px 10px;cursor:pointer"><span style="font-size:10px;font-weight:800;color:#fff">👑 VIP</span></div>':''}
+        ${!hasFeature('stats')?'<div onclick="showVipModal()" style="position:absolute;top:10px;right:10px;z-index:2;background:linear-gradient(135deg,#ff9900,#f97316);border-radius:20px;padding:3px 10px;cursor:pointer"><span style="font-size:10px;font-weight:800;color:#fff">👑</span></div>':''}
         <div style="position:relative;margin-bottom:8px">
           <div style="height:4px;background:var(--border);border-radius:4px;margin:0 4px"></div>
           <div style="position:absolute;top:0;left:4px;height:4px;background:${_custVisitMode==='visited'?'var(--blue)':'var(--red)'};border-radius:4px;width:${selIdx===0?0:Math.round((selIdx/(periods.length-1))*100)}%;transition:width .2s"></div>
           <div style="display:flex;justify-content:space-between;margin-top:-6px">
             ${periods.map((p,i)=>`
-              <button onclick="${isPremium()?'setCustDays('+p.days+')':'showVipModal()'}" title="${p.label}" style="width:16px;height:16px;border-radius:50%;border:2px solid ${i<=selIdx&&selIdx>0?(_custVisitMode==='visited'?'var(--blue)':'var(--red)'):'var(--border)'};background:${i===selIdx?(_custVisitMode==='visited'?'var(--blue)':'var(--red)'):'var(--white)'};cursor:pointer;padding:0;flex-shrink:0;transition:all .15s"></button>
+              <button onclick="${hasFeature('stats')?'setCustDays('+p.days+')':'showVipModal()'}" title="${p.label}" style="width:16px;height:16px;border-radius:50%;border:2px solid ${i<=selIdx&&selIdx>0?(_custVisitMode==='visited'?'var(--blue)':'var(--red)'):'var(--border)'};background:${i===selIdx?(_custVisitMode==='visited'?'var(--blue)':'var(--red)'):'var(--white)'};cursor:pointer;padding:0;flex-shrink:0;transition:all .15s"></button>
             `).join('')}
           </div>
         </div>
@@ -7278,7 +7293,7 @@ function renderCustomersTab(el){
     <div id="bulk-action-bar" style="display:none;margin:0 16px 10px;padding:12px 14px;background:var(--blue-light);border-radius:12px;border:1.5px solid var(--blue)">
       <div style="font-size:13px;font-weight:700;color:var(--blue);margin-bottom:8px" id="bulk-count-label">0명 선택됨</div>
       <div style="display:flex;flex-direction:column;gap:8px">
-        ${isPremium()?`
+        ${hasFeature('crm_sms')?`
         <button onclick="bulkRechargeDice(1)" class="btn btn-sm" style="background:linear-gradient(160deg,#FFC46B,#FF8B42);color:#fff;font-weight:800;box-shadow:0 3px 10px -3px rgba(255,139,66,.6)">🎲 주사위 1개 충전 + 알림 문자</button>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button onclick="bulkSendPromo()" class="btn btn-light btn-sm">📢 매장 이벤트 문자</button>
@@ -7675,7 +7690,7 @@ function lookupDiceCustomer(){
 const _DICE_MISSION_LABEL={survey:'만족도 설문',naver:'네이버 영수증 리뷰',kakao:'카카오맵 리뷰',clip:'네이버 클립 영상',google:'구글맵 리뷰',insta:'인스타 스토리'};
 function renderDiceGrantResult(user){
   const el=document.getElementById('dice-grant-result');
-  const missions=(STORE.diceGame.missions||[]).filter(m=>!m.premium||isPremium());
+  const missions=(STORE.diceGame.missions||[]).filter(m=>!isMissionLocked(m));
   const state=STORE.diceState&&STORE.diceState[user.id];
   const done=(state&&state.missionsDone)||[];
   el.innerHTML=`
@@ -7825,7 +7840,7 @@ let statsGranularity='day';
 let statsRangeMode='all'; // 'all' | 'range'
 let statsRangeFrom='',statsRangeTo='';
 function _applyStatsVipBlur(){
-  const vip=!isPremium()&&(statsGranularity!=='day'||statsRangeMode==='range');
+  const vip=!hasFeature('stats')&&(statsGranularity!=='day'||statsRangeMode==='range');
   const el=document.getElementById('participation-chart');
   if(!el)return;
   el.style.filter=vip?'blur(4px)':'';
@@ -7984,99 +7999,53 @@ function renderSurveyRatio(){
 
    무료 : 메인게임 · 네이버 리뷰 · 카카오맵 · 스탬프 · 쿠폰 · QR · 연락처 수집 · 기본 통계
    유료 : CRM 문자 · 구글/인스타 · 기간별 통계 · 설문 문항 편집  (총괄관리자가 개별 부여) */
-function isPremium(){return !!(_platformConfig.forceAllPremium||(STORE&&STORE.premium));}
+/* ════ 기능 단위 플랜 ════
+   기간(30일)으로 끊지 않는다. 날짜가 되면 닫히는 방식은 "쓰다가 뺏긴다"로 읽혀
+   감사함이 아니라 반감이 남는다. 대신 '몇 개를 열어드리느냐'로 나눈다 —
+   꼭 필요한 기능을 직접 고르게 하면 그 기능의 가치를 스스로 인식하게 된다.
+     free 0개 · challenge 1개 · client 3개 · full 전부(유료)
+   ⚠️ 무료 기본 기능(게임·네이버 리뷰·설문·스탬프·쿠폰·QR·연락처·기본통계)은
+      플랜과 무관하게 항상 열려 있다. 아래는 '추가로' 열어주는 것들이다. */
+const PAID_FEATURES=[
+  {id:'crm_sms',      icon:'📱', label:'CRM 문자 자동 발송', desc:'고객을 골라 앱에서 바로 문자 발송'},
+  {id:'crm_edit',     icon:'✍️', label:'문자 문구 수정',     desc:'재접촉 문자 양식을 직접 편집'},
+  {id:'missions',     icon:'🎯', label:'리뷰 미션 전체 개방', desc:'카카오맵·구글·인스타·클립 모두'},
+  {id:'stats',        icon:'📊', label:'기간별·주월별 통계',  desc:'기간 선택 · 주/월 단위 분석'},
+  {id:'survey_edit',  icon:'📋', label:'설문 문항 편집',      desc:'질문을 우리 매장에 맞게 수정'},
+  {id:'extra_events', icon:'🎡', label:'추가 이벤트 게임',    desc:'카카오맵·구글·티맵 별도 게임'}
+];
+const PLAN_SLOTS={free:0,challenge:1,client:3,full:PAID_FEATURES.length};
+const PLAN_LABEL={free:'무료',challenge:'챌린지',client:'클라이언트',full:'전체 개방'};
+function storePlan(){
+  if(_platformConfig.forceAllPremium)return 'full';
+  if(STORE&&STORE.premium)return 'full';              // 예전 premium 플래그 호환
+  const t=STORE&&STORE.planTier;
+  return PLAN_SLOTS[t]!==undefined?t:'free';
+}
+function planSlots(){return PLAN_SLOTS[storePlan()]||0;}
+/* 슬롯을 넘겨 고른 건 무시한다. 플랜이 내려가도 고른 기록은 지우지 않고
+   상위 N개만 적용해, 다시 올려주면 쓰던 게 그대로 살아나게 한다. */
+function unlockedFeatures(){
+  if(storePlan()==='full')return PAID_FEATURES.map(f=>f.id);
+  const picked=(STORE&&STORE.features)||[];
+  return picked.filter(id=>PAID_FEATURES.some(f=>f.id===id)).slice(0,planSlots());
+}
+function hasFeature(id){return unlockedFeatures().includes(id);}
+function isPremium(){return storePlan()==='full';}   // 기존 호출부 호환
+function toggleFeature(id){
+  if(!STORE)return;
+  if(!Array.isArray(STORE.features))STORE.features=[];
+  const i=STORE.features.indexOf(id);
+  if(i>=0)STORE.features.splice(i,1);
+  else{
+    if(STORE.features.length>=planSlots()){toast(`지금은 ${planSlots()}개까지 고르실 수 있어요`);return;}
+    STORE.features.push(id);
+  }
+  saveState();
+  renderAdmin('settings');
+}
 
-/* ── 30일 개방 · 이후 연장 문의 ──
-   챌린지 참여 기간(1개월) 동안 열어드리고, 그 뒤엔 관리자 기능이 닫힌다.
-   연장은 자동 결제가 아니라 대표가 카카오톡 문의를 받아 직접 열어준다.
-   ⚠️ 닫히는 건 '사장님 관리자 화면'만이다. 고객 QR·게임은 계속 돌아간다 —
-      매장 앞에 붙여둔 QR이 손님 앞에서 죽으면 사장님이 곤란해지고,
-      그동안 쌓이던 연락처·리뷰 데이터도 끊긴다. */
-const ACCESS_DAYS=30, ACCESS_WARN_DAYS=7;
 const OWNER_KAKAO_URL='https://open.kakao.com/me/jangsa_master';
-function _accessStart(){
-  if(!STORE)return today();
-  if(STORE.openedAt)return STORE.openedAt;
-  if(STORE.createdAt)return new Date(STORE.createdAt).toISOString().split('T')[0];
-  return today();
-}
-function accessUntil(){
-  if(STORE&&STORE.accessUntil)return STORE.accessUntil;   // 대표가 연장해준 경우
-  const d=new Date(_accessStart());
-  d.setDate(d.getDate()+ACCESS_DAYS);
-  return d.toISOString().split('T')[0];
-}
-function accessDaysLeft(){
-  const d=Math.floor((new Date(accessUntil())-new Date(today()))/86400000);
-  return isNaN(d)?ACCESS_DAYS:d;
-}
-// 총괄이 프리미엄을 준 매장은 기간 제한 없이 계속 쓴다
-function isAccessExpired(){return !isPremium()&&accessDaysLeft()<0;}
-function extendAccess(id,days){
-  const s=storesDB[id];if(!s)return;
-  const base=new Date(Math.max(new Date(s.accessUntil||_accessStartOf(s)).getTime(),Date.now()));
-  base.setDate(base.getDate()+days);
-  s.accessUntil=base.toISOString().split('T')[0];
-  saveStoresDB();_sbPush(id);renderPlatform();
-  toast(`🔓 ${s.profile.name} — ${s.accessUntil}까지 열어드렸어요`);
-}
-function _accessStartOf(s){
-  if(s.openedAt)return s.openedAt;
-  if(s.createdAt)return new Date(s.createdAt).toISOString().split('T')[0];
-  return today();
-}
-function accessUntilOf(s){
-  if(s.accessUntil)return s.accessUntil;
-  const d=new Date(_accessStartOf(s));d.setDate(d.getDate()+ACCESS_DAYS);
-  return d.toISOString().split('T')[0];
-}
-
-/* 종료 7일 전부터 매일 한 번 알린다.
-   매번 띄우면 짜증나서 오히려 안 읽으므로 하루 1회로 제한한다. */
-function maybeShowAccessPopup(){
-  if(!STORE||isPremium())return;
-  const left=accessDaysLeft();
-  if(left>ACCESS_WARN_DAYS)return;
-  const key='rp_accesspop_'+STORE_ID;
-  try{if(localStorage.getItem(key)===today())return;localStorage.setItem(key,today());}catch(e){}
-  showAccessModal();
-}
-function showAccessModal(){
-  if(document.getElementById('access-modal'))return;
-  const left=accessDaysLeft(), over=left<0;
-  const a=trialAssetSummary();
-  const m=document.createElement('div');
-  m.id='access-modal';
-  m.style.cssText='position:fixed;inset:0;z-index:9200;display:flex;align-items:flex-end;background:rgba(0,0,0,.55)';
-  m.innerHTML=`<div style="width:100%;background:var(--white);border-radius:24px 24px 0 0;padding:22px 18px 32px;max-height:88vh;overflow-y:auto">
-    <div style="text-align:center;margin-bottom:14px">
-      <div style="font-size:40px;margin-bottom:6px">${over?'🔒':'⏳'}</div>
-      <div style="font-size:19px;font-weight:900;color:var(--t1);line-height:1.4">
-        ${over?'무료 개방 기간이 끝났어요':`무료 개방 <b style="color:#FF6B00">${left}일</b> 남았어요`}</div>
-      <div style="font-size:12.5px;color:var(--t3);margin-top:6px;line-height:1.7">
-        ${over?'연장을 원하시면 아래로 문의해주세요. 확인 후 열어드릴게요.'
-              :`${accessUntil()}까지 이용하실 수 있어요.<br>계속 쓰시려면 미리 문의해주세요.`}</div>
-    </div>
-    <div style="background:linear-gradient(160deg,#FFF3D2,#FCE1A0);border-radius:14px;padding:14px 15px;margin-bottom:14px">
-      <div style="font-size:13px;font-weight:900;color:#7A4A06;margin-bottom:9px">그동안 이만큼 쌓으셨어요</div>
-      <div style="display:flex;gap:8px">
-        <div style="flex:1;background:rgba(255,255,255,.75);border-radius:10px;padding:9px 6px;text-align:center">
-          <div style="font-size:19px;font-weight:900;color:#7A4A06">${a.users}</div><div style="font-size:10.5px;color:#8A6318">고객 연락처</div></div>
-        <div style="flex:1;background:rgba(255,255,255,.75);border-radius:10px;padding:9px 6px;text-align:center">
-          <div style="font-size:19px;font-weight:900;color:#7A4A06">${a.coupons}</div><div style="font-size:10.5px;color:#8A6318">발급 쿠폰</div></div>
-        <div style="flex:1;background:rgba(255,255,255,.75);border-radius:10px;padding:9px 6px;text-align:center">
-          <div style="font-size:19px;font-weight:900;color:#7A4A06">${a.surveys}</div><div style="font-size:10.5px;color:#8A6318">설문 응답</div></div>
-      </div>
-      <div style="font-size:11.5px;color:#8A6318;line-height:1.7;margin-top:10px">
-        데이터는 지워지지 않아요. <b>엑셀로 내려받아 두시면</b> 언제든 그대로 쓰실 수 있습니다.</div>
-    </div>
-    <a href="${OWNER_KAKAO_URL}" target="_blank" rel="noopener" class="btn" style="background:#FEE500;color:#191f28;font-weight:900;text-decoration:none;display:flex;align-items:center;justify-content:center;font-size:15px">💬 카카오톡으로 연장 문의하기</a>
-    ${over?'':`<button class="btn btn-light" style="margin-top:8px" onclick="document.getElementById('access-modal').remove()">나중에 하기</button>`}
-    ${over?`<button class="btn btn-light" style="margin-top:8px" onclick="downloadStoreExcel()">📗 내 데이터 엑셀로 받기</button>`:''}
-  </div>`;
-  document.body.appendChild(m);
-  if(!over)m.addEventListener('click',e=>{if(e.target===m)m.remove();});
-}
 function trialAssetSummary(){
   if(!STORE)return{users:0,coupons:0,surveys:0};
   return{
@@ -8181,7 +8150,7 @@ function showVipModal(){
    ⚠️ 남은 날짜를 세거나 겁주지 않는다. 무료 기능은 기간 제한이 없다.
    대신 "지금까지 이만큼 쌓였다"를 보여주고, 그 자산을 꺼내 쓰는 수단으로 VIP를 안내한다. */
 function renderTrialBanner(){
-  if(isPremium())return '';
+  if(storePlan()!=='free')return '';   // 뭐라도 열어드린 매장엔 유료 안내를 띄우지 않는다
   const a=trialAssetSummary();
   if(!a.users)return '';   // 아직 쌓인 게 없으면 굳이 유료 얘기를 꺼내지 않는다
   return `<div onclick="showVipModal()" style="cursor:pointer;margin:0 16px 12px;border-radius:14px;padding:13px 15px;background:var(--bg);border:1.5px solid var(--border)">
@@ -8195,28 +8164,6 @@ function renderTrialBanner(){
 function renderAdmin(tab){
   document.getElementById('admin-store-title').textContent=STORE.profile.name+' 관리';
   const el=document.getElementById('admin-body');
-  /* 무료 개방 기간이 끝나면 관리자 기능을 닫고 연장 문의로 연결한다.
-     (고객 QR·게임은 계속 돌아가므로 매장 운영 자체는 멈추지 않는다) */
-  if(isAccessExpired()){
-    const a=trialAssetSummary();
-    el.innerHTML=`
-      <div class="card card-pad" style="margin:0 16px;text-align:center;border-color:#FF8B42">
-        <div style="font-size:46px;margin-bottom:10px">🔒</div>
-        <div style="font-size:18px;font-weight:900;color:var(--t1);margin-bottom:8px">무료 개방 기간이 끝났어요</div>
-        <div style="font-size:13px;color:var(--t3);line-height:1.8;margin-bottom:14px">
-          ${accessUntil()}까지 이용하셨어요.<br>
-          연장을 원하시면 아래로 문의해주세요 — 확인 후 열어드립니다.
-        </div>
-        <div style="background:linear-gradient(160deg,#FFF3D2,#FCE1A0);border-radius:12px;padding:13px 14px;margin-bottom:14px">
-          <div style="font-size:12.5px;font-weight:900;color:#7A4A06;margin-bottom:6px">쌓인 데이터는 그대로 있어요</div>
-          <div style="font-size:12px;color:#8A6318;line-height:1.8">고객 ${a.users}명 · 쿠폰 ${a.coupons}건 · 설문 ${a.surveys}건<br>손님 QR·게임은 지금도 정상 작동합니다.</div>
-        </div>
-        <a href="${OWNER_KAKAO_URL}" target="_blank" rel="noopener" class="btn" style="background:#FEE500;color:#191f28;font-weight:900;text-decoration:none;display:flex;align-items:center;justify-content:center">💬 카카오톡으로 연장 문의하기</a>
-        <button class="btn btn-light" style="margin-top:8px" onclick="downloadStoreExcel()">📗 내 데이터 엑셀로 받기</button>
-        <div style="font-size:11px;color:var(--t4);margin-top:12px;line-height:1.6">매장 ID ${STORE_ID} · ${(STORE.owner&&STORE.owner.name)||'-'}</div>
-      </div>`;
-    return;
-  }
   if(tab==='stats'){
     const total=STORE.coupons.length,used=STORE.coupons.filter(c=>c.status==='used').length,rate=total?Math.round(used/total*100):0;
     el.innerHTML=`
@@ -8238,7 +8185,7 @@ function renderAdmin(tab){
         <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:10px">날짜별 리뷰 이벤트 참여인원</div>
         <div style="display:flex;gap:8px;margin-bottom:10px">
           <button class="chip ${statsRangeMode==='all'?'on':'off'}" onclick="setStatsRangeMode('all')">총계</button>
-          <button class="chip ${statsRangeMode==='range'?'on':'off'}" onclick="setStatsRangeMode('range')">기간별 보기${isPremium()?'':' 👑'}</button>
+          <button class="chip ${statsRangeMode==='range'?'on':'off'}" onclick="setStatsRangeMode('range')">기간별 보기${hasFeature('stats')?'':' 👑'}</button>
         </div>
         <div id="stats-range-picker" style="display:${statsRangeMode==='range'?'flex':'none'};gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
           <input type="date" id="stats-from" value="${statsRangeFrom}" style="flex:1;min-width:110px;padding:7px 9px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;background:var(--white);color:var(--t1)">
@@ -8249,8 +8196,8 @@ function renderAdmin(tab){
         </div>
         <div class="chips" style="margin-bottom:12px">
           <button class="chip ${statsGranularity==='day'?'on':'off'}" onclick="setStatsGranularity('day')">일별</button>
-          <button class="chip ${statsGranularity==='week'?'on':'off'}" onclick="setStatsGranularity('week')">주별${isPremium()?'':' 👑'}</button>
-          <button class="chip ${statsGranularity==='month'?'on':'off'}" onclick="setStatsGranularity('month')">월별${isPremium()?'':' 👑'}</button>
+          <button class="chip ${statsGranularity==='week'?'on':'off'}" onclick="setStatsGranularity('week')">주별${hasFeature('stats')?'':' 👑'}</button>
+          <button class="chip ${statsGranularity==='month'?'on':'off'}" onclick="setStatsGranularity('month')">월별${hasFeature('stats')?'':' 👑'}</button>
         </div>
         <div style="position:relative"><div id="participation-chart">${renderParticipationChart()}</div></div>
         <div style="font-size:11px;color:var(--t4);margin-top:8px;line-height:1.6">💡 이 수치를 네이버 플레이스에 실제로 등록된 리뷰 수와 비교해보세요</div>
@@ -8266,10 +8213,10 @@ function renderAdmin(tab){
 
       <div class="card card-pad" style="position:relative;overflow:hidden">
         <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:10px">리뷰 이벤트 참여 대비 설문 응답 비율</div>
-        <div style="${isPremium()?'':'filter:blur(6px);pointer-events:none;user-select:none'}">
+        <div style="${hasFeature('stats')?'':'filter:blur(6px);pointer-events:none;user-select:none'}">
           ${renderSurveyRatio()}
         </div>
-        ${isPremium()?'':'<div onclick="showVipModal()" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(255,255,255,.06)"><div style="background:rgba(255,255,255,.95);border:2px solid #f97316;border-radius:12px;padding:10px 18px;text-align:center"><div style="font-size:18px;margin-bottom:4px">👑</div><div style="font-size:12px;font-weight:700;color:#f97316">VIP 기능 — 탭하여 문의</div></div></div>'}
+        ${hasFeature('stats')?'':'<div onclick="showVipModal()" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(255,255,255,.06)"><div style="background:rgba(255,255,255,.95);border:2px solid #f97316;border-radius:12px;padding:10px 18px;text-align:center"><div style="font-size:18px;margin-bottom:4px">👑</div><div style="font-size:12px;font-weight:700;color:#f97316">VIP 기능 — 탭하여 문의</div></div></div>'}
       </div>
 
       <div class="card card-pad">
@@ -8363,7 +8310,7 @@ function renderRouletteAdmin(el){
   const lastIdx=STORE.prizes.length-1;
   const gm=STORE.gameMode||'roulette';
   el.innerHTML=`
-    ${isPremium()?'':`
+    ${hasFeature('missions')?'':`
     <div class="card card-pad" style="margin-bottom:12px;border-color:#FF8B42">
       <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px">🎯 리뷰 미션 선택 <span style="font-size:11px;color:var(--t4);font-weight:600">무료 플랜 · ${FREE_MISSION_LIMIT}개</span></div>
       <div style="font-size:12px;color:var(--t3);line-height:1.7;margin-bottom:12px">
@@ -8681,7 +8628,7 @@ function normalizeProbs(){
 
 /* ════════════════════ 추가 이벤트 관리 ════════════════════ */
 function renderEventsAdmin(el){
-  const locked=!isPremium();
+  const locked=!hasFeature('extra_events');
   const events=STORE.events||[];
   const gameModes=[
     {id:'roulette',icon:'🎡',label:'룰렛'},
@@ -8827,11 +8774,11 @@ function renderSurveyAdmin(el){
     <!-- 문항 관리 (접기/펼치기) -->
     <div class="card card-pad">
       <div onclick="toggleSurveyQMgmt()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer">
-        <div style="font-size:14px;font-weight:700;color:var(--t1)">📋 설문 문항 관리 ${isPremium()?'':'<span style="background:linear-gradient(135deg,#ff9900,#f97316);color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;vertical-align:middle">👑 VIP</span>'}</div>
+        <div style="font-size:14px;font-weight:700;color:var(--t1)">📋 설문 문항 관리 ${hasFeature('survey_edit')?'':'<span style="background:linear-gradient(135deg,#ff9900,#f97316);color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;vertical-align:middle">👑 VIP</span>'}</div>
         <span id="sq-mgmt-arrow" style="font-size:18px;color:var(--t3)">›</span>
       </div>
       <div id="sq-mgmt-body" style="display:none;margin-top:14px">
-        ${isPremium()?`
+        ${hasFeature('survey_edit')?`
         <div style="font-size:12px;color:var(--t3);margin-bottom:10px">신규 손님과 재방문 손님에게 <b>서로 다른 설문</b>이 나갑니다. 아래에서 편집할 쪽을 고르세요.</div>
         <div style="display:flex;gap:8px;margin-bottom:14px">
           ${[['new','🙋 신규 고객','어떻게 알고 왔나'],['revisit','💚 재방문 고객','왜 다시 왔나']].map(([t,label,desc])=>{
@@ -9148,7 +9095,40 @@ function _funnelHtml(sum){
 }
 function renderSettingsAdmin(el){
   const _gameUrl=buildStoreUrl(STORE_ID);
+  const _plan=storePlan(), _slots=planSlots(), _picked=unlockedFeatures();
   el.innerHTML=`
+    ${_plan==='full'?`
+    <div class="card card-pad" style="margin-bottom:12px;border-color:#03C75A;background:linear-gradient(160deg,#F2FCF6,#E4F7EC)">
+      <div style="font-size:14px;font-weight:800;color:#0B7A3E">✨ 모든 기능이 열려 있어요</div>
+      <div style="font-size:12px;color:#166B41;margin-top:4px;line-height:1.7">문자 발송·통계·설문 편집·추가 이벤트까지 전부 사용하실 수 있습니다.</div>
+    </div>`:`
+    <div class="card card-pad" style="margin-bottom:12px;border-color:#FF8B42">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
+        <div style="font-size:14px;font-weight:700;color:var(--t1)">🎁 추가 기능 선택</div>
+        <span class="li-badge ${_slots?'badge-blue':'badge-gray'}">${PLAN_LABEL[_plan]} · ${_picked.length}/${_slots}</span>
+      </div>
+      <div style="font-size:12px;color:var(--t3);line-height:1.7;margin-bottom:12px">
+        ${_slots?`우리 매장에 <b>꼭 필요한 ${_slots}개</b>를 직접 골라주세요. 언제든 바꾸실 수 있어요.`
+                :'지금은 기본 기능만 열려 있어요. 아래 기능이 필요하시면 문의해주세요.'}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:7px">
+        ${PAID_FEATURES.map(f=>{
+          const on=_picked.includes(f.id);
+          const canPick=_slots>0;
+          return `<button onclick="${canPick?`toggleFeature('${f.id}')`:'showVipModal()'}"
+            style="display:flex;align-items:center;gap:11px;text-align:left;padding:12px 13px;border-radius:13px;cursor:pointer;font-family:inherit;
+            border:2px solid ${on?'#FF8B42':'var(--border)'};background:${on?'rgba(255,139,66,.09)':'var(--white)'}">
+            <span style="font-size:21px;flex-shrink:0;${on?'':'filter:grayscale(1);opacity:.5'}">${f.icon}</span>
+            <span style="flex:1;min-width:0">
+              <span style="display:block;font-size:13.5px;font-weight:800;color:${on?'#B5551A':'var(--t2)'}">${f.label}</span>
+              <span style="display:block;font-size:11px;color:var(--t4);margin-top:1px">${f.desc}</span>
+            </span>
+            <span style="flex-shrink:0;font-size:12px;font-weight:800;color:${on?'#FF8B42':'var(--t4)'}">${on?'✓ 사용중':canPick?'선택':'🔒'}</span>
+          </button>`;
+        }).join('')}
+      </div>
+      <button class="btn btn-sm" style="margin-top:11px;background:linear-gradient(160deg,#FFC46B,#FF8B42);color:#fff;font-weight:800" onclick="showVipModal()">🔓 전부 열고 싶어요 (문의)</button>
+    </div>`}
     <div class="card card-pad" style="border-color:var(--blue)">
       <div style="font-size:13px;font-weight:700;color:var(--blue);margin-bottom:4px">🎮 고객 게임 링크 · QR</div>
       <div style="font-size:12px;color:var(--t3);margin-bottom:10px;line-height:1.6">고객이 게임을 시작하기 전에 접속하는 매장 전용 주소입니다.</div>
@@ -9262,14 +9242,14 @@ function renderSettingsAdmin(el){
       <button class="btn btn-blue" onclick="saveCouponPolicy()">쿠폰 정책 저장</button>
     </div>
 
-    <div class="card card-pad" style="border-color:#FF8B42${isPremium()?'':';position:relative'}">
-      ${isPremium()?'':`<div onclick="showVipModal()" style="position:absolute;inset:0;z-index:3;border-radius:16px;background:rgba(255,255,255,.72);backdrop-filter:blur(2.5px);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;padding:18px;text-align:center">
+    <div class="card card-pad" style="border-color:#FF8B42${hasFeature('crm_edit')?'':';position:relative'}">
+      ${hasFeature('crm_edit')?'':`<div onclick="showVipModal()" style="position:absolute;inset:0;z-index:3;border-radius:16px;background:rgba(255,255,255,.72);backdrop-filter:blur(2.5px);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;padding:18px;text-align:center">
         <div style="font-size:30px">🔒</div>
         <div style="font-size:14px;font-weight:900;color:var(--t1);margin-top:6px">문구 수정은 프리미엄이에요</div>
         <div style="font-size:11.5px;color:var(--t3);margin-top:5px;line-height:1.7">무료 플랜은 <b>고객·연락처 탭</b>에서<br>기본 문구를 확인하고 복사해 보내실 수 있어요</div>
         <div style="margin-top:10px;background:#FEE500;color:#191f28;border-radius:10px;padding:9px 16px;font-size:12.5px;font-weight:800">💬 문의하기</div>
       </div>`}
-      <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px">✉️ 재접촉 문자 템플릿 2종 ${isPremium()?'':'👑'}</div>
+      <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px">✉️ 재접촉 문자 템플릿 2종 ${hasFeature('crm_edit')?'':'👑'}</div>
       <div style="font-size:12px;color:var(--t3);margin-bottom:12px;line-height:1.65">
         고객·연락처 탭에서 고객을 선택한 뒤 사용하는 문자 양식이에요.<br>
         사용 변수: <b>{고객명} {매장명} {링크} {주사위}</b></div>
