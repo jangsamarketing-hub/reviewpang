@@ -15,7 +15,7 @@
 <meta property="og:title" content="고객과 리뷰가 쌓이는 장사필수템">
 <meta property="og:description" content="포인트적립 + 리뷰이벤트 + CRM무료문자 + 설문조사까지 한번에!">
 <meta property="og:type" content="website">
-<meta property="og:image" content="https://crm-review.vercel.app/og-image.jpg">
+<meta property="og:image" content="https://reviewcrm.vercel.app/og-image.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:type" content="image/jpeg">
@@ -24,7 +24,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="고객과 리뷰가 쌓이는 장사필수템">
 <meta name="twitter:description" content="포인트적립 + 리뷰이벤트 + CRM무료문자 + 설문조사까지 한번에!">
-<meta name="twitter:image" content="https://crm-review.vercel.app/og-image.jpg">
+<meta name="twitter:image" content="https://reviewcrm.vercel.app/og-image.jpg">
 <title>장사 필수템 · 고객과 리뷰가 쌓이는 매장</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2199,7 +2199,7 @@ const PROD_DOMAIN='matchissunzip.com'; // 실제 배포 시 보유 도메인으�
 function buildStoreUrl(uid){
   // localhost에서 접속 중이면 실제 배포 도메인 사용 (QR·링크 공유 가능하도록)
   const isLocal=location.hostname==='localhost'||location.hostname==='127.0.0.1';
-  const base=isLocal?'https://crm-review.vercel.app':(location.origin+location.pathname.replace(/\/+$/,''));
+  const base=isLocal?'https://reviewcrm.vercel.app':(location.origin+location.pathname.replace(/\/+$/,''));
   return base+'?store='+uid;
 }
 function detectStoreId(){
