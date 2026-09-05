@@ -15,7 +15,7 @@
 <meta property="og:title" content="고객과 리뷰가 쌓이는 장사필수템">
 <meta property="og:description" content="스탬프적립 + 리뷰이벤트 + CRM무료문자 + 설문조사까지 한번에!">
 <meta property="og:type" content="website">
-<meta property="og:image" content="https://reviewcrm.vercel.app/og-image.jpg">
+<meta property="og:image" content="https://crm-review-app.vercel.app/og-image.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:type" content="image/jpeg">
@@ -24,7 +24,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="고객과 리뷰가 쌓이는 장사필수템">
 <meta name="twitter:description" content="스탬프적립 + 리뷰이벤트 + CRM무료문자 + 설문조사까지 한번에!">
-<meta name="twitter:image" content="https://reviewcrm.vercel.app/og-image.jpg">
+<meta name="twitter:image" content="https://crm-review-app.vercel.app/og-image.jpg">
 <title>장사 필수템 · 고객과 리뷰가 쌓이는 매장</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1520,7 +1520,7 @@ body.dark .dice-side-jp .dsj-item{background:linear-gradient(160deg,#4A3A18,#3A2
         <input type="checkbox" id="l-privacy" style="width:20px;height:20px;margin-top:1px;flex-shrink:0;accent-color:var(--blue)">
         <span style="font-size:13.5px;color:var(--t1);line-height:1.5;font-weight:700;flex:1">
           개인정보 수집·이용 동의 <span style="color:var(--red);font-weight:800">(필수)</span>
-          <span style="display:block;font-size:11.5px;color:var(--t4);font-weight:500;margin-top:2px">이름·휴대폰 번호 · 스탬프/쿠폰 발급 목적 · 3년 보관</span>
+          <span style="display:block;font-size:11.5px;color:var(--t4);font-weight:500;margin-top:2px">이름·휴대폰 번호 · 스탬프/쿠폰 발급 목적 · 삭제 요청 시 즉시 파기</span>
         </span>
         <button type="button" onclick="event.preventDefault();event.stopPropagation();showPrivacyModal('collect')" style="background:var(--bg);border:none;border-radius:8px;padding:5px 9px;font-size:11px;color:var(--blue);font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">보기</button>
       </label>
@@ -2201,7 +2201,7 @@ const PROD_DOMAIN='matchissunzip.com'; // 실제 배포 시 보유 도메인으�
 function buildStoreUrl(uid){
   // localhost에서 접속 중이면 실제 배포 도메인 사용 (QR·링크 공유 가능하도록)
   const isLocal=location.hostname==='localhost'||location.hostname==='127.0.0.1';
-  const base=isLocal?'https://reviewcrm.vercel.app':(location.origin+location.pathname.replace(/\/+$/,''));
+  const base=isLocal?'https://crm-review-app.vercel.app':(location.origin+location.pathname.replace(/\/+$/,''));
   return base+'?store='+uid;
 }
 function detectStoreId(){
@@ -2860,8 +2860,6 @@ function migrateStore(s){
   if(s.appliedAt)delete s.appliedAt;
   // 무료 개방 시작일 — 기존 매장은 가입일 기준으로 소급한다
   if(!s.openedAt)s.openedAt=s.createdAt?new Date(s.createdAt).toISOString().split('T')[0]:today();
-  // 보관 기간(3년)이 지난 고객 정보는 앱이 켜질 때 조용히 파기한다 (개인정보보호법 제21조)
-  purgeExpiredCustomers(s);
   return s;
 }
 Object.keys(storesDB).forEach(k=>{storesDB[k]=migrateStore(storesDB[k])});
@@ -4079,32 +4077,63 @@ function grantAdConsentBonus(uid){
   st.adBonusGiven=true;
   return true;
 }
-/* 로그인 때 안 누른 손님에게 홈에서 딱 한 번 더 자연스럽게 물어본다.
-   ⚠️ 계속 띄우면 광고 강요로 보이니 '거절하면 다시 묻지 않는다'. */
+/* 홈에서 수신 동의를 자연스럽게 이어가는 장치.
+
+   ⚠️ 거절한 손님을 매번 붙잡으면 광고 강요가 된다. 그래서 두 가지로 나눈다:
+     · 미동의  → 거절하면 4개월(120일) 동안 안 묻는다. 그 사이 방문하면
+                 거래관계 예외(6개월)로 발송은 계속 가능하니 손해가 없다.
+     · 동의함  → 동의 후 22개월이 지나면 '계속 받으시겠어요?'로 재확인한다.
+                 정보통신망법 제50조 제8항의 2년 재확인 의무를 이걸로 충족하고,
+                 누르는 순간 동의 시각이 갱신돼 2년이 다시 시작된다.
+
+   💡 6개월 예외 자체는 따로 갱신할 필요가 없다 — getLastVisit()이 게임·쿠폰 발급·
+      쿠폰 사용·설문·스탬프를 전부 보기 때문에, 손님이 매장에서 뭐라도 하면
+      그 날짜로 자동으로 6개월이 다시 시작된다. */
+const AD_REASK_DAYS=120;
+const AD_RECONFIRM_DAYS=660;   // 약 22개월 — 2년이 되기 전에 미리 물어본다
+function _daysSince(v){const d=_parseKDate(v);return d?(Date.now()-d.getTime())/864e5:null;}
+function _adUser(){return currentUser?STORE.users.find(x=>x.id===currentUser.id):null;}
 function acceptAdsLater(){
-  if(!currentUser)return;
-  const u=STORE.users.find(x=>x.id===currentUser.id); if(!u)return;
-  u.marketing=true; u.marketingConsentAt=nowStr(); delete u.marketingRevokedAt;
+  const u=_adUser(); if(!u)return;
+  const wasNew=!u.marketing;
+  u.marketing=true; u.marketingConsentAt=nowStr(); u.adAskAt=nowStr();
+  delete u.marketingRevokedAt;
   currentUser.marketing=true;
-  const got=grantAdConsentBonus(u.id);
+  const got=wasNew&&grantAdConsentBonus(u.id);
   saveState();
-  toast(got?'🎲 주사위 1개를 드렸어요! 알림도 보내드릴게요':'알림을 보내드릴게요!');
+  toast(got?'🎲 주사위 1개를 드렸어요! 알림도 보내드릴게요':'앞으로도 알림 보내드릴게요!');
   refreshHome();
 }
 function declineAdsLater(){
-  if(!currentUser)return;
-  const u=STORE.users.find(x=>x.id===currentUser.id); if(!u)return;
-  u.adAskDismissed=true; saveState(); refreshHome();
+  const u=_adUser(); if(!u)return;
+  u.adAskAt=nowStr();            // 날짜를 남겨두고 일정 기간 뒤에 다시 묻는다
+  if(u.marketing){u.marketing=false;u.marketingRevokedAt=nowStr();currentUser.marketing=false;}
+  saveState(); refreshHome();
 }
 function adOptInBanner(){
-  if(!currentUser)return '';
-  const u=STORE.users.find(x=>x.id===currentUser.id);
-  if(!u||u.marketing||u.adAskDismissed||u.marketingRevokedAt)return '';
+  const u=_adUser(); if(!u)return '';
+  const since=_daysSince(u.adAskAt);
+  let mode='';
+  if(!u.marketing){
+    if(since!==null&&since<AD_REASK_DAYS)return '';        // 최근에 거절 → 조용히 있는다
+    mode='new';
+  }else{
+    const c=_daysSince(u.marketingConsentAt);
+    if(c===null||c<AD_RECONFIRM_DAYS)return '';
+    if(since!==null&&since<30)return '';
+    mode='renew';
+  }
+  const isNew=mode==='new';
+  const title=isNew?'🎁 알림 받으시면 주사위 1개를 바로 드려요':'🔔 알림을 계속 받으시겠어요?';
+  const desc=isNew
+    ? '쿠폰 만료 전에 문자로 알려드려요. 언제든 그만 받으실 수 있어요.'
+    : '동의하신 지 2년이 되어가요. 계속 받으시려면 한 번만 눌러주세요.';
+  const yes=isNew?'🎲 받을게요':'네, 계속 받을게요';
   return `<div style="margin:0 16px 12px;background:linear-gradient(160deg,#FFF3D2,#FCE1A0);border-radius:16px;padding:14px 16px">
-    <div style="font-size:13.5px;font-weight:900;color:#7A4A06;line-height:1.5">🎁 알림 받으시면 주사위 1개를 바로 드려요</div>
-    <div style="font-size:11.5px;color:#8A6318;line-height:1.7;margin-top:4px">쿠폰 만료 전에 문자로 알려드려요. 언제든 그만 받으실 수 있어요.</div>
+    <div style="font-size:13.5px;font-weight:900;color:#7A4A06;line-height:1.5">${title}</div>
+    <div style="font-size:11.5px;color:#8A6318;line-height:1.7;margin-top:4px">${desc}</div>
     <div style="display:flex;gap:8px;margin-top:11px">
-      <button onclick="acceptAdsLater()" style="flex:1;padding:11px;border:none;border-radius:11px;background:#7A4A06;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">🎲 받을게요</button>
+      <button onclick="acceptAdsLater()" style="flex:1;padding:11px;border:none;border-radius:11px;background:#7A4A06;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">${yes}</button>
       <button onclick="declineAdsLater()" style="padding:11px 14px;border:none;border-radius:11px;background:rgba(122,74,6,.12);color:#8A6318;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">괜찮아요</button>
     </div>
   </div>`;
@@ -4234,7 +4263,11 @@ const PROCESSOR_INFO={
   bizNo:'248-87-03779',
   role:'고객 데이터 보관 및 문자 발송 대행(수탁자)'
 };
-const PRIVACY_RETENTION_YEARS=3;
+/* 보유 기간 — 코드가 실제로 하는 일과 문구가 반드시 일치해야 한다.
+   자동 파기를 끈 이상 '3년 보관'이라 안내하면 안 된다.
+   '거래 종료 또는 삭제 요청 시까지'는 목적이 살아있는 한 적법하고,
+   실제로 삭제 요청을 즉시 처리할 수 있으면 문제되지 않는다. */
+const PRIVACY_RETENTION_TEXT='매장과의 거래관계가 유지되는 동안 · 삭제를 요청하시면 즉시 파기';
 function _privacyRow(k,v){
   return `<div style="display:flex;gap:10px;padding:7px 0;border-top:1px solid var(--border2)">
     <div style="width:78px;flex-shrink:0;color:var(--t3);font-weight:700">${k}</div><div style="flex:1">${v}</div></div>`;
@@ -4247,7 +4280,7 @@ function _privacySections(){
       <div style="background:var(--bg);border-radius:12px;padding:12px 14px;margin-bottom:12px">
         ${_privacyRow('수집 항목','이름(닉네임), 휴대폰 번호').replace('border-top:1px solid var(--border2)','')}
         ${_privacyRow('이용 목적','스탬프 적립·쿠폰 발급 및 사용 확인, 이벤트 참여 관리')}
-        ${_privacyRow('보관 기간',`수집일로부터 <b>${PRIVACY_RETENTION_YEARS}년</b><br><span style="color:var(--t4)">삭제를 요청하시면 즉시 파기합니다</span>`)}
+        ${_privacyRow('보관 기간',`매장과의 거래관계가 유지되는 동안<br><span style="color:var(--t4)"><b>삭제를 요청하시면 즉시 파기</b>합니다 (매장 직원에게 말씀하시면 됩니다)</span>`)}
         ${_privacyRow('수집 주체',`<b>${store}</b> (개인정보처리자)`)}
       </div>
       <div style="font-size:12px;color:var(--t3);line-height:1.7">
@@ -4271,7 +4304,7 @@ function _privacySections(){
       <div style="background:var(--bg);border-radius:12px;padding:12px 14px;margin-bottom:14px">
         ${_privacyRow('수집 항목','이름(닉네임), 휴대폰 번호').replace('border-top:1px solid var(--border2)','')}
         ${_privacyRow('이용 목적','스탬프·쿠폰 발급 및 사용 확인, 설문 응답 수집, (동의 시) 혜택 안내 문자')}
-        ${_privacyRow('보관 기간',`수집일로부터 <b>${PRIVACY_RETENTION_YEARS}년</b>`)}
+        ${_privacyRow('보관 기간',PRIVACY_RETENTION_TEXT)}
       </div>
 
       <div style="font-size:12.5px;font-weight:800;color:var(--t1);margin-bottom:6px">2. 처리 주체</div>
@@ -4614,6 +4647,27 @@ async function renderLeadInbox(force){
     ${all.length>pending.length?`<button onclick="_leadShowDone=!_leadShowDone;renderLeadInbox()" style="background:none;border:none;font-size:11.5px;color:var(--t3);cursor:pointer;font-family:inherit;padding:4px 0">${_leadShowDone?'처리한 문의 숨기기':'처리한 문의도 보기'}</button>`:''}
   </div>`;
 }
+/* 되돌릴 수 없는 작업이라, 먼저 '몇 명이 지워지는지' 세어서 보여주고
+   확인을 받은 뒤에만 실제로 지운다. 전 매장을 한 번에 처리한다. */
+function runManualPurge(){
+  const sel=document.getElementById('purge-years');
+  const years=sel?+sel.value:3;
+  const cutoff=Date.now()-years*365*864e5;
+  let willDrop=0, storesHit=0;
+  Object.keys(storesDB).forEach(id=>{
+    const st=storesDB[id]; if(!st||!Array.isArray(st.users))return;
+    const n=st.users.filter(u=>{const d=_parseKDate(u.privacyConsentAt||u.joined);return d&&d.getTime()<cutoff;}).length;
+    if(n){willDrop+=n;storesHit++;}
+  });
+  if(!willDrop){alert(`${years}년 이상 지난 고객이 없습니다.`);return}
+  if(!confirm(`${years}년 이상 지난 고객 ${willDrop}명 (매장 ${storesHit}곳)을 삭제합니다.\n\n이름·연락처는 물론 해당 고객의 쿠폰·설문·스탬프까지 함께 지워지며 되돌릴 수 없습니다.\n\n계속할까요?`))return;
+  let done=0;
+  Object.keys(storesDB).forEach(id=>{done+=purgeExpiredCustomers(storesDB[id],years);});
+  saveStoresDB();
+  Object.keys(storesDB).forEach(id=>{try{_sbPush(id)}catch(e){}});
+  alert(`${done}명을 삭제했습니다.`);
+  renderPlatform();
+}
 function downloadLeadsXls(){
   const rows=[['접수시각','대표자명','연락처','매장명','통화가능시간','원하는 기능','메모','매장ID']];
   (_leadsCache||[]).forEach(l=>rows.push([l.at||'',l.name||'',l.phone||'',l.store||'',l.callTime||'',l.want||'',l.memo||'',l.storeId||'']));
@@ -4648,6 +4702,22 @@ function renderPlatform(){
     </div>
     <!-- 📞 기능 문의 리드함 (비동기로 채워짐) -->
     <div id="lead-inbox"></div>
+
+    <!-- 🗂 오래된 고객 정리 — 자동 파기는 끄고, 필요할 때만 직접 돌린다 -->
+    <div style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:13px 15px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:800;color:var(--t1)">🗂 오래된 고객 정리 <span style="font-size:11px;font-weight:600;color:var(--t4)">(수동)</span></div>
+      <div style="font-size:11px;color:var(--t3);margin-top:4px;line-height:1.65">
+        고객 정보는 <b>자동으로 지워지지 않습니다.</b> 정리가 필요할 때만 직접 실행하세요.
+        고객이 삭제를 요청하면 고객 목록의 🗑 버튼으로 즉시 지울 수 있습니다.</div>
+      <div style="display:flex;gap:7px;align-items:center;margin-top:10px">
+        <select id="purge-years" style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:12px;background:var(--white);color:var(--t1);font-family:inherit">
+          <option value="3">3년 이상 지난 고객</option>
+          <option value="5">5년 이상 지난 고객</option>
+          <option value="7">7년 이상 지난 고객</option>
+        </select>
+        <button onclick="runManualPurge()" style="padding:9px 13px;border:1.5px solid #e03131;border-radius:9px;background:var(--white);color:#e03131;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">정리 실행</button>
+      </div>
+    </div>
     <div class="stat-row" style="margin-bottom:12px">
       <div class="stat-cell"><div class="stat-num">${premiumCount}</div><div class="stat-label">프리미엄</div></div>
       <div class="stat-cell"><div class="stat-num">${pendingCount}</div><div class="stat-label">승인 대기</div></div>
@@ -7370,7 +7440,7 @@ function buildLastVisitIndex(){
   const idx=Object.create(null);
   const put=(uid,d)=>{if(!uid||!d)return;const v=String(d).slice(0,10);if(!idx[uid]||v>idx[uid])idx[uid]=v;};
   (STORE.spinLog||[]).forEach(s=>put(s.uid,s.date));
-  (STORE.coupons||[]).forEach(c=>put(c.uid,c.issued));
+  (STORE.coupons||[]).forEach(c=>{put(c.uid,c.issued);put(c.uid,c.usedAt);});
   (STORE.surveys||[]).forEach(s=>put(s.userId,s.date));
   const cards=STORE.stampCards||{};
   Object.keys(cards).forEach(uid=>{
@@ -7712,13 +7782,15 @@ function filterConsentedForAd(users){
   const blocked=users.length-ok.length;
   return {ok,blocked,expired,trade};
 }
-/* 보관 기간(3년)이 지난 고객 정보는 지체 없이 파기해야 한다 (개인정보보호법 제21조).
-   앱 실행 시 조용히 정리하고, 지운 건수만 알린다. */
-function purgeExpiredCustomers(store){
+/* ⚠️ 자동 실행하지 않는다 — 대표님 요청으로 오래된 고객도 백오피스에 남긴다.
+   대신 고지 문구를 '삭제 요청 시까지 보관'으로 맞춰뒀다.
+   ('3년 보관'이라 안내하고 계속 갖고 있으면 그 자체가 위반이 된다)
+   총괄관리자 화면의 [오래된 고객 정리] 버튼으로 필요할 때만 직접 돌린다. */
+function purgeExpiredCustomers(store,years){
   const st=store||STORE; if(!st||!Array.isArray(st.users))return 0;
   // ⚠️ 상수를 함수 밖에 두면 안 된다 — migrateStore가 모듈 로드 중에 호출돼
   //    아직 초기화되지 않은 const를 읽고 앱 전체가 뜨지 않는다 (TDZ)
-  const RETENTION_YEARS=3;
+  const RETENTION_YEARS=years||3;
   const cutoff=Date.now()-RETENTION_YEARS*365*864e5;
   const keep=[],drop=[];
   st.users.forEach(u=>{
