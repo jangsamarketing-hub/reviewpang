@@ -16,7 +16,8 @@
  * (비워두면 메일은 안 보내고 시트에만 쌓입니다)
  */
 
-var NOTIFY_EMAIL = '';   // 예: 'jangsa.marketing@gmail.com'
+// 여러 명에게 보내려면 쉼표로 구분하세요. 빈 문자열이면 메일 없이 시트에만 쌓입니다.
+var NOTIFY_EMAIL = 'jaydenkim90@gmail.com,jaydenkim90@naver.com,jangsa.dt@gmail.com';
 var SHEET_NAME   = '가입리드';
 
 function doPost(e) {
@@ -51,7 +52,8 @@ function doPost(e) {
     ]);
 
     // 실제 가입일 때만 메일 알림 (테스트 줄은 제외)
-    if (NOTIFY_EMAIL && data.type === 'store_signup' && data['매장ID'] !== 'TEST') {
+    var isTest = data['매장ID'] === 'TEST';
+    if (NOTIFY_EMAIL && !isTest && data.type === 'store_signup') {
       MailApp.sendEmail({
         to: NOTIFY_EMAIL,
         subject: '[리뷰팽귄] 새 매장 가입 — ' + (data['매장명'] || ''),
@@ -65,6 +67,24 @@ function doPost(e) {
           '플레이스 : ' + (data['네이버플레이스'] || ''),
           '매장주소 : ' + (data['매장주소'] || ''),
           '수신동의 : ' + (data['마케팅수신동의'] || ''),
+          '',
+          '접수시각 : ' + (data.at || '')
+        ].join('\n')
+      });
+    }
+    // 유료 기능 문의(전화 리드)도 놓치면 안 되니 같이 메일로 알린다
+    if (NOTIFY_EMAIL && !isTest && data.type === 'feature_inquiry') {
+      MailApp.sendEmail({
+        to: NOTIFY_EMAIL,
+        subject: '[리뷰팽귄] 📞 기능 문의 — ' + (data['대표자명'] || data['매장명'] || ''),
+        body: [
+          '전화 문의가 접수됐습니다. 확인 후 연락 주세요.',
+          '',
+          '대표자   : ' + (data['대표자명'] || ''),
+          '연락처   : ' + (data['연락처'] || ''),
+          '매장명   : ' + (data['매장명'] || ''),
+          '통화시간 : ' + (data['마케팅수신동의'] || ''),
+          '원하는 기능 / 메모 : ' + (data['매장주소'] || ''),
           '',
           '접수시각 : ' + (data.at || '')
         ].join('\n')
